@@ -4,7 +4,7 @@ import { Entity, EntityId } from '@diff./repository';
 import { MariadbEntity } from '../../src/decorator/MariadbEntity';
 import { MariadbRepository } from '../../src/MariadbRepository';
 import { MariadbClient } from '../../src/MariadbClient';
-import { hostOptions } from './config/db';
+import { hostOptions } from './env/host';
 
 @MariadbEntity({ db: 'test', table: 'single_pk_test', host: hostOptions })
 class TestEntity extends Entity {

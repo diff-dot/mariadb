@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { MariadbClient } from '../../src/MariadbClient';
-import { hostOptions } from './config/db';
+import { hostOptions } from './env/host';
 
 describe('mariadb > connection-pool', () => {
   it('커넥션 풀에서 커넥션 획득 후 쿼리', async () => {

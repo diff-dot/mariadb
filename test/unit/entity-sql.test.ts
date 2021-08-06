@@ -3,7 +3,7 @@ import { Entity, EntityId } from '@diff./repository';
 import { Expose } from 'class-transformer';
 import { MariadbEntity } from '../../src/decorator/MariadbEntity';
 import { EntitySql } from '../../src/EntitySql';
-import { hostOptions } from './config/db';
+import { hostOptions } from './env/host';
 
 @MariadbEntity({ db: 'test', table: 'test', host: hostOptions })
 class TestEntity extends Entity {
