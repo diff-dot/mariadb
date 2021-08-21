@@ -11,24 +11,20 @@ import { WriteResult } from './type/WriteResult';
  * Entity 를 Mariadb 에서 관리하기 위한 클래스
  */
 export abstract class MariadbRepository extends Repository {
-  protected async addEntity(entity: Entity, options: { persistanceConn?: PoolConnection } = {}): Promise<WriteResult> {
-    const { persistanceConn } = options;
-
+  protected async addEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
 
-    const conn = persistanceConn || (await MariadbClient.instance(entityOptions.host).connection());
+    const connection = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
-      const res = await conn.query(
+      const res = await connection.query(
         `INSERT INTO ${entityOptions.db}.${entityOptions.table}(${entitySql.columns()}) VALUES(${entitySql.valuesPlaceholder()})`,
         entitySql.values()
       );
       return res;
     } finally {
-      if (!persistanceConn) {
-        await conn.release();
-      }
+      if (!options.connection) await connection.release();
     }
   }
 
@@ -37,18 +33,18 @@ export abstract class MariadbRepository extends Repository {
     where: Partial<T>;
     operator?: SqlWhereOperator;
     props: K[];
-    persistanceConn?: PoolConnection;
+    connection?: PoolConnection;
     forUpdate?: boolean;
   }): Promise<Pick<T, K> | undefined> {
-    const { entityConstructor, where, operator = 'AND', props, persistanceConn, forUpdate = false } = args;
+    const { entityConstructor, where, operator = 'AND', props, forUpdate = false } = args;
 
     const entityOptions = getMariadbEntityOptions(entityConstructor);
     const entitySql = new EntityReadSql(entityConstructor);
 
-    const conn = persistanceConn || (await MariadbClient.instance(entityOptions.host).connection());
+    const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
-      const res = await conn.query(
+      const res = await connections.query(
         `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1 ${
           forUpdate ? 'FOR UPDATE' : ''
         }`,
@@ -58,42 +54,41 @@ export abstract class MariadbRepository extends Repository {
       if (!res.length) return undefined;
       return plainToClass(entityConstructor, res[0] as Record<string, unknown>);
     } finally {
-      if (!persistanceConn) await conn.release();
+      if (!args.connection) await connections.release();
     }
   }
 
-  protected async updateEntity(entity: Entity, options: { persistanceConn?: PoolConnection } = {}): Promise<WriteResult> {
-    const { persistanceConn } = options;
-
+  protected async updateEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
 
-    const conn = persistanceConn || (await MariadbClient.instance(entityOptions.host).connection());
+    const selectedConn = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
-      const res = await conn.query(
+      const res = await selectedConn.query(
         `UPDATE ${entityOptions.db}.${entityOptions.table} SET ${entitySql.updatePlaceholder()} WHERE ${entitySql.whereById()}`,
         entitySql.values()
       );
       return res;
     } finally {
-      if (!persistanceConn) await conn.release();
+      if (!options.connection) await selectedConn.release();
     }
   }
 
-  protected async deleteEntity(entity: Entity, options: { persistanceConn?: PoolConnection } = {}): Promise<WriteResult> {
-    const { persistanceConn } = options;
-
+  protected async deleteEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
 
-    const conn = persistanceConn || (await MariadbClient.instance(entityOptions.host).connection());
+    const selectedConn = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
-      const res = await conn.query(`DELETE FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereById()}`, entitySql.values());
+      const res = await selectedConn.query(
+        `DELETE FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereById()}`,
+        entitySql.values()
+      );
       return res;
     } finally {
-      if (!persistanceConn) await conn.release();
+      if (!options.connection) await selectedConn.release();
     }
   }
 }
