@@ -23,17 +23,18 @@ export abstract class MariadbRepository extends Repository {
 
   protected async entity<T extends Entity, K extends keyof T>(args: {
     entityConstructor: { new (...args: unknown[]): T };
-    where: { values: Partial<T>; operator?: SqlWhereOperator };
+    where: Partial<T>;
+    operator?: SqlWhereOperator;
     props: K[];
   }): Promise<Pick<T, K> | undefined> {
-    const { entityConstructor, props, where: condition } = args;
+    const { entityConstructor, where, operator = 'AND', props } = args;
 
     const options = getMariadbEntityOptions(entityConstructor);
     const entitySql = new EntityReadSql(entityConstructor);
 
     const res = await MariadbClient.instance(options.host).query(
-      `SELECT ${entitySql.columns({ props })} FROM ${options.db}.${options.table} WHERE ${entitySql.whereEqual(condition)} LIMIT 1`,
-      condition.values
+      `SELECT ${entitySql.columns(props)} FROM ${options.db}.${options.table} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1`,
+      where
     );
 
     if (!res.length) return undefined;

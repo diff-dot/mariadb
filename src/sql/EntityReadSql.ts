@@ -16,13 +16,11 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    *
    * @returns
    */
-  public columns(args: { props: K[] }): string {
-    const { props } = args;
+  public columns(props: K[]): string {
     return `${props.map(p => `${this.toSnakecase(p.toString())} AS ${p}`).join(',')}`;
   }
 
-  public whereEqual(args: { values: Partial<InstanceType<T>>; operator?: SqlWhereOperator }): string {
-    const { values, operator = 'AND' } = args;
+  public whereEqual(values: Partial<InstanceType<T>>, operator?: SqlWhereOperator): string {
     return Object.keys(values)
       .map(propName => `${this.toSnakecase(propName)}=:${propName}`)
       .join(` ${operator} `);

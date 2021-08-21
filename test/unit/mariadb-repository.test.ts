@@ -40,10 +40,8 @@ class SinglePkRepo extends MariadbRepository {
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
     return this.entity({
       entityConstructor: SinglePkEntity,
-      where: {
-        values: { testEntityId },
-        operator: 'AND'
-      },
+      where: { testEntityId },
+      operator: 'AND',
       props
     });
   }
@@ -57,7 +55,7 @@ class SinglePkRepo extends MariadbRepository {
       conn = await MariadbClient.instance(options.host).connection();
       const whereValues = { data };
       const res = await conn.query(
-        `SELECT ${entitySql.columns({ props })} FROM ${options.db}.${options.table} WHERE ${entitySql.whereEqual({ values: whereValues })}`,
+        `SELECT ${entitySql.columns(props)} FROM ${options.db}.${options.table} WHERE ${entitySql.whereEqual(whereValues)}`,
         whereValues
       );
       if (!res.length) return undefined;
@@ -90,7 +88,7 @@ class AutoIncPkRepo extends MariadbRepository {
     return this.entity({
       entityConstructor: AutoIncPkEntity,
       props,
-      where: { values: { id } }
+      where: { id }
     });
   }
 
