@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Entity, EntityId } from '@diff./repository';
 import { Expose } from 'class-transformer';
-import { MariadbEntity } from '../../src/decorator/MariadbEntity';
-import { EntitySql } from '../../src/EntitySql';
-import { hostOptions } from './env/host';
+import { MariadbEntity } from '../../../src/decorator/MariadbEntity';
+import { EntityWriteSql } from '../../../src/sql';
+import { hostOptions } from '../env/host';
 
 @MariadbEntity({ db: 'test', table: 'test', host: hostOptions })
 class TestEntity extends Entity {
@@ -22,20 +22,12 @@ const entity = new TestEntity();
 entity.testEntityId = 'idValue';
 entity.data = 'value';
 entity.carmelCaseField = 'cvalue';
-const entitySql = new EntitySql(entity);
+const entitySql = new EntityWriteSql(entity);
 
-describe('repo > entity-sql.test', () => {
+describe('repo > entity-write-sql.test', () => {
   it('각 property 를 저장할 컬럼명을 반환', () => {
     expect(entitySql.columns()).to.be.eq('test_entity_id,data,carmel_case_field');
   });
-
-  // it('property 의 이름을 alias 로 가지는 컬럼명을 반환', () => {
-  //   expect(entitySql.columns({ alias: true })).to.be.eq('test_entity_id AS testEntityId,data AS data,carmel_case_field AS carmelCaseField');
-  // });
-
-  // it('선택한 property 를 저장할 컬럼명을 반환', () => {
-  //   expect(entitySql.columns({ props: ['data'] })).to.be.eq('data');
-  // });
 
   it('각 property 의 값으로 대체할 placeholder 반환', async () => {
     expect(entitySql.valuesPlaceholder()).to.be.eq(':testEntityId,:data,:carmelCaseField');
