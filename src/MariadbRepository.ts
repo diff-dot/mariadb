@@ -38,8 +38,9 @@ export abstract class MariadbRepository extends Repository {
     operator?: SqlWhereOperator;
     props: K[];
     persistanceConn?: PoolConnection;
+    forUpdate?: boolean;
   }): Promise<Pick<T, K> | undefined> {
-    const { entityConstructor, where, operator = 'AND', props, persistanceConn } = args;
+    const { entityConstructor, where, operator = 'AND', props, persistanceConn, forUpdate = false } = args;
 
     const entityOptions = getMariadbEntityOptions(entityConstructor);
     const entitySql = new EntityReadSql(entityConstructor);
@@ -48,7 +49,9 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await conn.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1`,
+        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1 ${
+          forUpdate ? 'FOR UPDATE' : ''
+        }`,
         where
       );
 
