@@ -96,7 +96,7 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
         throw new Error(`EntityId(${propName}) not defined to plained ${this.entity.constructor.name}`);
       }
     }
-    return this.idPropNames.map(p => `${this.toSnakecase(p)}=:${p}`).join('AND');
+    return this.idPropNames.map(p => `${this.toSnakecase(p)}=:${p}`).join(' AND ');
   }
 
   /**
