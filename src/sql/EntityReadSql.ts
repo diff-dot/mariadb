@@ -21,9 +21,9 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     return `${props.map(p => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(p.toString())} AS ${p}`).join(',')}`;
   }
 
-  public order(condition: Partial<Record<K, OrderByMode>>): string {
+  public order(condition: Partial<Record<K, OrderByMode>>, tableAlias?: string): string {
     return Object.entries(condition)
-      .map(prop => `${prop[0]} ${prop[1]}`)
+      .map(prop => `${tableAlias ? tableAlias + '.' : ''}${prop[0]} ${prop[1]}`)
       .join(',');
   }
 

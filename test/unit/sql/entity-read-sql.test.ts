@@ -29,6 +29,10 @@ describe('repo > entity-read-sql.test', () => {
     expect(entitySql.order({ testEntityId: 'ASC', data: 'DESC' })).to.be.eq('testEntityId ASC,data DESC');
   });
 
+  it('table alias가 지정된 테이블의 order 쿼리 반환', () => {
+    expect(entitySql.order({ testEntityId: 'ASC', data: 'DESC' }, 'T1')).to.be.eq('T1.testEntityId ASC,T1.data DESC');
+  });
+
   it('지정된 값을 가지는 entity 반환(AND)', () => {
     expect(entitySql.whereEqual({ carmelCaseField: '1' })).to.be.eq('carmel_case_field=:carmelCaseField');
   });
