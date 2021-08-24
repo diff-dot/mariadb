@@ -1,6 +1,21 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { MariadbEntityDecoratorOptions } from '../type/MariadbEntityDecoratorOptions';
+import { MariadbHostOptions } from '../type/MariadbHostOptions';
+
+export class MariadbEntityDescriptor implements MariadbEntityDecoratorOptions {
+  db: string;
+  table: string;
+  host: MariadbHostOptions;
+
+  constructor(options: MariadbEntityDecoratorOptions) {
+    Object.assign(this, options);
+  }
+
+  get tablePath(): string {
+    return `\`${this.db}\`` + '.' + `\`${this.table}\``;
+  }
+}
 
 /**
  * Mariadb에 저장되는 entity 의 db 및 테이블 정보
@@ -21,8 +36,8 @@ export function MariadbEntity(options: MariadbEntityDecoratorOptions) {
  * @param target
  * @returns
  */
-export function getMariadbEntityOptions(target: any): MariadbEntityDecoratorOptions {
+export function getMariadbEntityOptions(target: any): MariadbEntityDescriptor {
   const options = Reflect.getMetadata(mariadbEntityOptionsKey, target instanceof Function ? target : target.constructor);
   if (!options) throw new Error('Mariadb entity options not defined. :' + target.constructor.name);
-  return options;
+  return new MariadbEntityDescriptor(options);
 }
