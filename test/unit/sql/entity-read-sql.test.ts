@@ -22,11 +22,14 @@ const entitySql = new EntityReadSql(TestEntity);
 
 describe('repo > entity-read-sql.test', () => {
   it('프로퍼티명으로 이름이 지정된 컬럼이름 목록을 반환', () => {
-    expect(entitySql.columns({ props: ['carmelCaseField'] })).to.be.eq('carmel_case_field AS carmelCaseField');
+    expect(entitySql.columns(['carmelCaseField'])).to.be.eq('carmel_case_field AS carmelCaseField');
+  });
+
+  it('order 쿼리 반환', () => {
+    expect(entitySql.order({ testEntityId: 'ASC', data: 'DESC' })).to.be.eq('testEntityId ASC,data DESC');
   });
 
   it('지정된 값을 가지는 entity 반환(AND)', () => {
-    const whereValues = { carmelCaseField: '1' };
-    expect(entitySql.whereEqual({ values: whereValues })).to.be.eq('carmel_case_field=:carmelCaseField');
+    expect(entitySql.whereEqual({ carmelCaseField: '1' })).to.be.eq('carmel_case_field=:carmelCaseField');
   });
 });

@@ -1,4 +1,5 @@
 import { Entity } from '@diff./repository';
+import { OrderByMode } from '../type/OrderByMode';
 import { SqlWhereOperator } from '../type/SqlWhereOperator';
 import { EntitySql } from './EntitySql';
 
@@ -18,6 +19,12 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    */
   public columns(props: K[], tableAlias?: string): string {
     return `${props.map(p => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(p.toString())} AS ${p}`).join(',')}`;
+  }
+
+  public order(condition: Partial<Record<K, OrderByMode>>): string {
+    return Object.entries(condition)
+      .map(prop => `${prop[0]} ${prop[1]}`)
+      .join(',');
   }
 
   public whereEqual(values: Partial<InstanceType<T>>, operator?: SqlWhereOperator): string {

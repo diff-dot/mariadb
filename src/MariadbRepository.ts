@@ -4,6 +4,7 @@ import { PoolConnection } from 'mariadb';
 import { getMariadbEntityOptions } from './decorator/MariadbEntity';
 import { MariadbClient } from './MariaDBClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
+import { OrderByMode } from './type/OrderByMode';
 import { SqlWhereOperator } from './type/SqlWhereOperator';
 import { WriteResult } from './type/WriteResult';
 
@@ -46,22 +47,23 @@ export abstract class MariadbRepository extends Repository {
     where?: Partial<T>;
     operator?: SqlWhereOperator;
     props: K[];
-    connection?: PoolConnection;
+    order?: Partial<Record<keyof T, OrderByMode>>;
     offset?: number;
     size: number;
+    connection?: PoolConnection;
   }): Promise<Pick<T, K>[]> {
-    const { entityConstructor, where, operator = 'AND', props, offset = 0, size } = args;
+    const { entityConstructor, where, operator = 'AND', props, order, offset = 0, size } = args;
 
     const entityOptions = getMariadbEntityOptions(entityConstructor);
     const entitySql = new EntityReadSql(entityConstructor);
 
     const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
-
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table} ${
-          where ? 'WHERE ' + entitySql.whereEqual(where, operator) : ''
-        } LIMIT ${offset}, ${size}`,
+        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table}
+        ${where ? 'WHERE ' + entitySql.whereEqual(where, operator) : ''}
+        ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
+        LIMIT ${offset}, ${size}`,
         where
       );
 
