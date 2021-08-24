@@ -15,6 +15,9 @@ class SinglePkEntity extends Entity {
   testEntityId: string;
 
   @Expose()
+  idx: number;
+
+  @Expose()
   data: string | null;
 
   @Expose()
@@ -44,6 +47,15 @@ class SinglePkRepo extends MariadbRepository {
       operator: 'AND',
       props
     });
+  }
+
+  async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
+    return this.entities({ entityConstructor: SinglePkEntity, props, where: { idx: index }, size: 10 });
+  }
+
+  async testEntityCount(data: string): Promise<number> {
+    const res = this.count({ entityConstructor: SinglePkEntity, where: { data } });
+    return res;
   }
 
   async testEntityByCustomQuery<K extends keyof SinglePkEntity>(data: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
@@ -107,6 +119,7 @@ const singlePkRepo = new SinglePkRepo();
 const singlePkEntity = new SinglePkEntity();
 singlePkEntity.testEntityId = 'w';
 singlePkEntity.data = 'data';
+singlePkEntity.idx = 1;
 singlePkEntity.carmelCaseField = 10;
 
 const autoIncPkRepo = new AutoIncPkRepo();
@@ -154,6 +167,17 @@ describe('repo > mariadb-repository.test', () => {
     singlePkEntity.data = 'updated data';
     const res = await singlePkRepo.updateTestEntity(singlePkEntity);
     expect(res).to.be.true;
+  });
+
+  it('Entity 개수 조회', async () => {
+    const res = await singlePkRepo.testEntityCount('updated data');
+    expect(res).to.be.eq(1);
+  });
+
+  it('Entity 목록 조회', async () => {
+    const res = await singlePkRepo.testEntities(1, ['testEntityId']);
+    expect(res.length).to.be.eq(1);
+    expect(res[0].testEntityId).to.be.eq(singlePkEntity.testEntityId);
   });
 
   it('Entity 삭제', async () => {

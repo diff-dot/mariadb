@@ -41,6 +41,68 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
+  protected async entities<T extends Entity, K extends keyof T>(args: {
+    entityConstructor: { new (...args: unknown[]): T };
+    where?: Partial<T>;
+    operator?: SqlWhereOperator;
+    props: K[];
+    connection?: PoolConnection;
+    offset?: number;
+    size: number;
+  }): Promise<Pick<T, K>[]> {
+    const { entityConstructor, where, operator = 'AND', props, offset = 0, size } = args;
+
+    const entityOptions = getMariadbEntityOptions(entityConstructor);
+    const entitySql = new EntityReadSql(entityConstructor);
+
+    const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
+
+    try {
+      const res = await connections.query(
+        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table} ${
+          where ? 'WHERE ' + entitySql.whereEqual(where, operator) : ''
+        } LIMIT ${offset}, ${size}`,
+        where
+      );
+
+      const entities: Pick<T, K>[] = [];
+      for (const row of res) {
+        entities.push(plainToClass(entityConstructor, row));
+      }
+
+      return entities;
+    } finally {
+      if (!args.connection) await connections.release();
+    }
+  }
+
+  protected async count<T extends Entity, K extends keyof T>(args: {
+    entityConstructor: { new (...args: unknown[]): T };
+    where: Partial<T>;
+    operator?: SqlWhereOperator;
+    connection?: PoolConnection;
+    forUpdate?: boolean;
+  }): Promise<number> {
+    const { entityConstructor, where, operator = 'AND', forUpdate = false } = args;
+
+    const entityOptions = getMariadbEntityOptions(entityConstructor);
+    const entitySql = new EntityReadSql(entityConstructor);
+
+    const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
+
+    try {
+      const res = await connections.query(
+        `SELECT COUNT(*) AS count FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereEqual(where, operator)} ${
+          forUpdate ? 'FOR UPDATE' : ''
+        }`,
+        where
+      );
+      return res[0].count;
+    } finally {
+      if (!args.connection) await connections.release();
+    }
+  }
+
   protected async addEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
