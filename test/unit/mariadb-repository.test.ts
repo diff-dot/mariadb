@@ -67,7 +67,7 @@ class SinglePkRepo extends MariadbRepository {
       conn = await MariadbClient.instance(options.host).connection();
       const whereValues = { data };
       const res = await conn.query(
-        `SELECT ${entitySql.columns(props)} FROM ${options.db}.${options.table} WHERE ${entitySql.whereEqual(whereValues)}`,
+        `SELECT ${entitySql.columns(props, 'T1')} FROM ${options.db}.${options.table} AS T1 WHERE ${entitySql.whereEqual(whereValues)}`,
         whereValues
       );
       if (!res.length) return undefined;
