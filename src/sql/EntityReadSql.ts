@@ -23,7 +23,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
 
   public order(condition: Partial<Record<K, OrderByMode>>, tableAlias?: string): string {
     return Object.entries(condition)
-      .map(prop => `${tableAlias ? tableAlias + '.' : ''}${prop[0]} ${prop[1]}`)
+      .map(prop => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(prop[0])} ${prop[1]}`)
       .join(',');
   }
 
