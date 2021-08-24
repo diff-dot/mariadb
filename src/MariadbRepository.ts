@@ -29,7 +29,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1 ${
+        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1 ${
           forUpdate ? 'FOR UPDATE' : ''
         }`,
         where
@@ -60,7 +60,7 @@ export abstract class MariadbRepository extends Repository {
     const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.db}.${entityOptions.table}
+        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath}
         ${where ? 'WHERE ' + entitySql.whereEqual(where, operator) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         LIMIT ${offset}, ${size}`,
@@ -94,9 +94,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connections.query(
-        `SELECT COUNT(*) AS count FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereEqual(where, operator)} ${
-          forUpdate ? 'FOR UPDATE' : ''
-        }`,
+        `SELECT COUNT(*) AS count FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual(where, operator)} ${forUpdate ? 'FOR UPDATE' : ''}`,
         where
       );
       return res[0].count;
@@ -113,7 +111,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connection.query(
-        `INSERT INTO ${entityOptions.db}.${entityOptions.table}(${entitySql.columns()}) VALUES(${entitySql.valuesPlaceholder()})`,
+        `INSERT INTO ${entityOptions.tablePath}(${entitySql.columns()}) VALUES(${entitySql.valuesPlaceholder()})`,
         entitySql.values()
       );
       return res;
@@ -130,7 +128,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await selectedConn.query(
-        `UPDATE ${entityOptions.db}.${entityOptions.table} SET ${entitySql.updatePlaceholder()} WHERE ${entitySql.whereById()}`,
+        `UPDATE ${entityOptions.tablePath} SET ${entitySql.updatePlaceholder()} WHERE ${entitySql.whereById()}`,
         entitySql.values()
       );
       return res;
@@ -146,10 +144,7 @@ export abstract class MariadbRepository extends Repository {
     const selectedConn = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
-      const res = await selectedConn.query(
-        `DELETE FROM ${entityOptions.db}.${entityOptions.table} WHERE ${entitySql.whereById()}`,
-        entitySql.values()
-      );
+      const res = await selectedConn.query(`DELETE FROM ${entityOptions.tablePath} WHERE ${entitySql.whereById()}`, entitySql.values());
       return res;
     } finally {
       if (!options.connection) await selectedConn.release();
