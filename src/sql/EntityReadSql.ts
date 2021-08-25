@@ -1,4 +1,5 @@
 import { Entity } from '@diff./repository';
+import { classToPlain } from 'class-transformer';
 import { OrderByMode } from '../type/OrderByMode';
 import { SqlWhereOperator } from '../type/SqlWhereOperator';
 import { EntitySql } from './EntitySql';
@@ -28,7 +29,8 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   }
 
   public whereEqual(values: Partial<InstanceType<T>>, operator?: SqlWhereOperator): string {
-    return Object.keys(values)
+    const plainValues = classToPlain(values, { exposeUnsetFields: false });
+    return Object.keys(plainValues)
       .map(propName => `${this.toSnakecase(propName)}=:${propName}`)
       .join(` ${operator} `);
   }
