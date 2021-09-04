@@ -4,6 +4,7 @@ import 'reflect-metadata';
 export * from 'mariadb';
 
 export * from './decorator';
+export * from './transformer';
 export * from './type';
 export * from './config';
 export * from './sql';
