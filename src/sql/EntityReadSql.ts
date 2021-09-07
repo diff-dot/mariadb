@@ -12,6 +12,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
 
     this.entityConstructor = entityConstructor;
     if (where) {
+      if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
       this.plainWhere = classToPlain(where, { exposeUnsetFields: false });
     }
   }
@@ -37,13 +38,26 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
 
     const sql = Object.keys(this.plainWhere)
-      .map(propName => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(propName)}=:${propName}`)
+      .map(propName => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(propName)}=:${this.valueBindName(propName, tableAlias)}`)
       .join(` ${operator} `);
     return sql;
   }
 
-  public whereValues(): Record<string, unknown> {
+  public whereValues(tableAlias?: string): Record<string, unknown> {
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
+    if (tableAlias) {
+      const values: Record<string, unknown> = {};
+      for (const propName of Object.keys(this.plainWhere)) {
+        values[this.valueBindName(propName, tableAlias)] = values[propName];
+      }
+    } else {
+      return this.plainWhere;
+    }
+
     return this.plainWhere;
+  }
+
+  private valueBindName(propName: string, tableAlias?: string) {
+    return tableAlias ? tableAlias + '_' + propName : propName;
   }
 }

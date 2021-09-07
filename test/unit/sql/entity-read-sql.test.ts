@@ -18,7 +18,7 @@ class TestEntity extends Entity {
   carmelCaseField: string;
 }
 
-const entitySql = new EntityReadSql(TestEntity, { carmelCaseField: '1' });
+const entitySql = new EntityReadSql(TestEntity, TestEntity.partial({ carmelCaseField: '1' }));
 
 describe('repo > entity-read-sql.test', () => {
   it('프로퍼티명으로 이름이 지정된 컬럼이름 목록을 반환', () => {
@@ -34,6 +34,6 @@ describe('repo > entity-read-sql.test', () => {
   });
 
   it('지정된 값을 가지는 entity 반환(AND)', () => {
-    expect(entitySql.whereEqual()).to.be.eq('carmel_case_field=:carmelCaseField');
+    expect(entitySql.whereEqual({ tableAlias: 'T1' })).to.be.eq('T1.carmel_case_field=:T1_carmelCaseField');
   });
 });

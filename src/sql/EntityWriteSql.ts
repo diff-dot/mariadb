@@ -19,6 +19,8 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
   constructor(entity: T) {
     super();
 
+    if (!(entity instanceof Entity)) throw new Error('ENTITY must be entity instance.');
+
     this.entity = entity;
 
     // entityId 정보 추출

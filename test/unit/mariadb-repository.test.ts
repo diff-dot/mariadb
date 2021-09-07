@@ -43,24 +43,30 @@ class SinglePkRepo extends MariadbRepository {
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
     return this.entity({
       entityConstructor: SinglePkEntity,
-      where: { testEntityId },
+      where: SinglePkEntity.partial({ testEntityId }),
       operator: 'AND',
       props
     });
   }
 
   async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
-    return this.entities({ entityConstructor: SinglePkEntity, props, where: { idx: index }, order: { idx: 'DESC' }, size: 10 });
+    return this.entities({
+      entityConstructor: SinglePkEntity,
+      props,
+      where: SinglePkEntity.partial({ idx: index }),
+      order: { idx: 'DESC' },
+      size: 10
+    });
   }
 
   async testEntityCount(data: string): Promise<number> {
-    const res = this.count({ entityConstructor: SinglePkEntity, where: { data } });
+    const res = this.count({ entityConstructor: SinglePkEntity, where: SinglePkEntity.partial({ data }) });
     return res;
   }
 
   async testEntityByCustomQuery<K extends keyof SinglePkEntity>(data: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
     const options = getMariadbEntityOptions(SinglePkEntity);
-    const entitySql = new EntityReadSql(SinglePkEntity, { data });
+    const entitySql = new EntityReadSql(SinglePkEntity, SinglePkEntity.partial({ data }));
 
     let conn: PoolConnection | undefined;
     try {
@@ -99,7 +105,7 @@ class AutoIncPkRepo extends MariadbRepository {
     return this.entity({
       entityConstructor: AutoIncPkEntity,
       props,
-      where: { id }
+      where: AutoIncPkEntity.partial({ id })
     });
   }
 
