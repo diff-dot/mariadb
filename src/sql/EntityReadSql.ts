@@ -6,10 +6,14 @@ import { EntitySql } from './EntitySql';
 
 export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>> extends EntitySql {
   private readonly entityConstructor: T;
-  constructor(entityConstructor: T) {
+  private readonly plainWhere: Record<string, unknown>;
+  constructor(entityConstructor: T, where?: Partial<InstanceType<T>>) {
     super();
 
     this.entityConstructor = entityConstructor;
+    if (where) {
+      this.plainWhere = classToPlain(where, { exposeUnsetFields: false });
+    }
   }
 
   /**
@@ -28,10 +32,18 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
       .join(',');
   }
 
-  public whereEqual(values: Partial<InstanceType<T>>, operator?: SqlWhereOperator): string {
-    const plainValues = classToPlain(values, { exposeUnsetFields: false });
-    return Object.keys(plainValues)
-      .map(propName => `${this.toSnakecase(propName)}=:${propName}`)
+  public whereEqual(args: { operator?: SqlWhereOperator; tableAlias?: string } = {}): string {
+    const { operator = 'AND', tableAlias } = args;
+    if (!this.plainWhere) throw new Error('Entity where condition not defined.');
+
+    const sql = Object.keys(this.plainWhere)
+      .map(propName => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(propName)}=:${propName}`)
       .join(` ${operator} `);
+    return sql;
+  }
+
+  public whereValues(): Record<string, unknown> {
+    if (!this.plainWhere) throw new Error('Entity where condition not defined.');
+    return this.plainWhere;
   }
 }

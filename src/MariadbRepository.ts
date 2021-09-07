@@ -23,16 +23,16 @@ export abstract class MariadbRepository extends Repository {
     const { entityConstructor, where, operator = 'AND', props, forUpdate = false } = args;
 
     const entityOptions = getMariadbEntityOptions(entityConstructor);
-    const entitySql = new EntityReadSql(entityConstructor);
+    const entitySql = new EntityReadSql(entityConstructor, where);
 
     const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual(where, operator)} LIMIT 1 ${
+        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual({ operator })} LIMIT 1 ${
           forUpdate ? 'FOR UPDATE' : ''
         }`,
-        where
+        entitySql.whereValues()
       );
 
       if (!res.length) return undefined;
@@ -55,16 +55,16 @@ export abstract class MariadbRepository extends Repository {
     const { entityConstructor, where, operator = 'AND', props, order, offset = 0, size } = args;
 
     const entityOptions = getMariadbEntityOptions(entityConstructor);
-    const entitySql = new EntityReadSql(entityConstructor);
+    const entitySql = new EntityReadSql(entityConstructor, where);
 
     const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
     try {
       const res = await connections.query(
         `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath}
-        ${where ? 'WHERE ' + entitySql.whereEqual(where, operator) : ''}
+        ${where ? 'WHERE ' + entitySql.whereEqual({ operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         LIMIT ${offset}, ${size}`,
-        where
+        entitySql.whereValues()
       );
 
       const entities: Pick<T, K>[] = [];
@@ -88,14 +88,14 @@ export abstract class MariadbRepository extends Repository {
     const { entityConstructor, where, operator = 'AND', forUpdate = false } = args;
 
     const entityOptions = getMariadbEntityOptions(entityConstructor);
-    const entitySql = new EntityReadSql(entityConstructor);
+    const entitySql = new EntityReadSql(entityConstructor, where);
 
     const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT COUNT(*) AS count FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual(where, operator)} ${forUpdate ? 'FOR UPDATE' : ''}`,
-        where
+        `SELECT COUNT(*) AS count FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual({ operator })} ${forUpdate ? 'FOR UPDATE' : ''}`,
+        entitySql.whereValues()
       );
       return res[0].count;
     } finally {
