@@ -1,7 +1,6 @@
 import { Entity, Repository } from '@diff./repository';
 import { plainToClass } from 'class-transformer';
 import { PoolConnection } from 'mariadb';
-import { getMariadbEntityOptions } from './decorator/MariadbEntity';
 import { MariadbClient } from './MariaDBClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { OrderByMode } from './type/OrderByMode';
@@ -22,14 +21,12 @@ export abstract class MariadbRepository extends Repository {
   }): Promise<Pick<T, K> | undefined> {
     const { entityConstructor, where, operator = 'AND', props, forUpdate = false } = args;
 
-    const entityOptions = getMariadbEntityOptions(entityConstructor);
-    const entitySql = new EntityReadSql(entityConstructor, where);
-
-    const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
+    const entitySql = new EntityReadSql(entityConstructor, { where });
+    const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual({ operator })} LIMIT 1 ${
+        `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual({ operator })} LIMIT 1 ${
           forUpdate ? 'FOR UPDATE' : ''
         }`,
         entitySql.whereValues()
@@ -54,13 +51,12 @@ export abstract class MariadbRepository extends Repository {
   }): Promise<Pick<T, K>[]> {
     const { entityConstructor, where, operator = 'AND', props, order, offset = 0, size } = args;
 
-    const entityOptions = getMariadbEntityOptions(entityConstructor);
-    const entitySql = new EntityReadSql(entityConstructor, where);
+    const entitySql = new EntityReadSql(entityConstructor, { where });
 
-    const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
+    const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entityOptions.tablePath}
+        `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath}
         ${where ? 'WHERE ' + entitySql.whereEqual({ operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         LIMIT ${offset}, ${size}`,
@@ -87,14 +83,12 @@ export abstract class MariadbRepository extends Repository {
   }): Promise<number> {
     const { entityConstructor, where, operator = 'AND', forUpdate = false } = args;
 
-    const entityOptions = getMariadbEntityOptions(entityConstructor);
-    const entitySql = new EntityReadSql(entityConstructor, where);
-
-    const connections = args.connection || (await MariadbClient.instance(entityOptions.host).connection());
+    const entitySql = new EntityReadSql(entityConstructor, { where });
+    const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT COUNT(*) AS count FROM ${entityOptions.tablePath} WHERE ${entitySql.whereEqual({ operator })} ${forUpdate ? 'FOR UPDATE' : ''}`,
+        `SELECT COUNT(*) AS count FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual({ operator })} ${forUpdate ? 'FOR UPDATE' : ''}`,
         entitySql.whereValues()
       );
       return res[0].count;
@@ -104,14 +98,12 @@ export abstract class MariadbRepository extends Repository {
   }
 
   protected async addEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
-    const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
-
-    const connection = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
+    const connection = options.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await connection.query(
-        `INSERT INTO ${entityOptions.tablePath}(${entitySql.columns()}) VALUES(${entitySql.valuesPlaceholder()})`,
+        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.valuesPlaceholder()})`,
         entitySql.values()
       );
       return res;
@@ -121,14 +113,12 @@ export abstract class MariadbRepository extends Repository {
   }
 
   protected async updateEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
-    const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
-
-    const selectedConn = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
+    const selectedConn = options.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await selectedConn.query(
-        `UPDATE ${entityOptions.tablePath} SET ${entitySql.updatePlaceholder()} WHERE ${entitySql.whereById()}`,
+        `UPDATE ${entitySql.tablePath} SET ${entitySql.updatePlaceholder()} WHERE ${entitySql.whereById()}`,
         entitySql.values()
       );
       return res;
@@ -138,13 +128,11 @@ export abstract class MariadbRepository extends Repository {
   }
 
   protected async deleteEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
-    const entityOptions = getMariadbEntityOptions(entity);
     const entitySql = new EntityWriteSql(entity);
-
-    const selectedConn = options.connection || (await MariadbClient.instance(entityOptions.host).connection());
+    const selectedConn = options.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
-      const res = await selectedConn.query(`DELETE FROM ${entityOptions.tablePath} WHERE ${entitySql.whereById()}`, entitySql.values());
+      const res = await selectedConn.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.values());
       return res;
     } finally {
       if (!options.connection) await selectedConn.release();

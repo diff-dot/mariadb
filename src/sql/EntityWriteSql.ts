@@ -1,6 +1,8 @@
 import { classToPlain } from 'class-transformer';
 import { Entity, EntityIdOptions, getEntityIdProps } from '@diff./repository';
 import { EntitySql } from './EntitySql';
+import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
+import { MariadbHostOptions } from '../config/MariadbHostOptions';
 /**
  * Entity 의 insert 또는 update 에 사용할 SQL 쿼리 생성기
  *
@@ -10,6 +12,7 @@ import { EntitySql } from './EntitySql';
  */
 export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntitySql {
   private readonly entity: T;
+  public readonly entityOption: MariadbEntityDescriptor;
   private readonly plainEntity: Record<string, unknown>;
   private readonly entityIdProps: Map<string, EntityIdOptions> | undefined; // entity id 정보
   private readonly propNames: string[]; // 값이 있는 모든 property 이름 목록
@@ -22,6 +25,7 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
     if (!(entity instanceof Entity)) throw new Error('ENTITY must be entity instance.');
 
     this.entity = entity;
+    this.entityOption = getMariadbEntityOptions(entity);
 
     // entityId 정보 추출
     this.entityIdProps = getEntityIdProps(entity);
@@ -107,5 +111,13 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
    */
   public values(): Record<string, unknown> {
     return this.plainEntity;
+  }
+
+  public get tablePath(): string {
+    return this.entityOption.tablePath;
+  }
+
+  public get host(): MariadbHostOptions {
+    return this.entityOption.host;
   }
 }

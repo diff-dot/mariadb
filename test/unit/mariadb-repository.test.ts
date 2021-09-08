@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Expose, plainToClass } from 'class-transformer';
 import { Entity, EntityId } from '@diff./repository';
-import { getMariadbEntityOptions, MariadbEntity } from '../../src/decorator/MariadbEntity';
+import { MariadbEntity } from '../../src/decorator/MariadbEntity';
 import { MariadbRepository } from '../../src/MariadbRepository';
 import { MariadbClient } from '../../src/MariadbClient';
 import { hostOptions } from './env/host';
@@ -65,14 +65,13 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async testEntityByCustomQuery<K extends keyof SinglePkEntity>(data: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
-    const options = getMariadbEntityOptions(SinglePkEntity);
-    const entitySql = new EntityReadSql(SinglePkEntity, SinglePkEntity.partial({ data }));
+    const entitySql = new EntityReadSql(SinglePkEntity, { where: SinglePkEntity.partial({ data }), tableAlias: 'T1' });
 
     let conn: PoolConnection | undefined;
     try {
-      conn = await MariadbClient.instance(options.host).connection();
+      conn = await MariadbClient.instance(entitySql.host).connection();
       const res = await conn.query(
-        `SELECT ${entitySql.columns(props, 'T1')} FROM ${options.tablePath} AS T1 WHERE ${entitySql.whereEqual()}`,
+        `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual()}`,
         entitySql.whereValues()
       );
       if (!res.length) return undefined;

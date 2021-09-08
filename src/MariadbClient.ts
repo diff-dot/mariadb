@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mariadb, { Pool, PoolConnection, QueryOptions } from 'mariadb';
-import { MariadbHostOptions } from './type/MariadbHostOptions';
+import { MariadbHostOptions } from './config/MariadbHostOptions';
 
 /**
  * 커넥션풀을 관리하는 싱글톤

@@ -1,4 +1,4 @@
-import { MariadbHostOptions } from '../../../src/type/MariadbHostOptions';
+import { MariadbHostOptions } from '../../../src/config/MariadbHostOptions';
 
 export const hostOptions = {
   name: 'account',

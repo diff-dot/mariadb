@@ -1,16 +1,26 @@
 import { Entity } from '@diff./repository';
 import { classToPlain } from 'class-transformer';
+import { MariadbHostOptions } from '../config';
+import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
 import { SqlWhereOperator } from '../type/SqlWhereOperator';
 import { EntitySql } from './EntitySql';
 
 export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>> extends EntitySql {
-  private readonly entityConstructor: T;
-  private readonly plainWhere: Record<string, unknown>;
-  constructor(entityConstructor: T, where?: Partial<InstanceType<T>>) {
+  private readonly entityClass: T;
+  public readonly entityOption: MariadbEntityDescriptor;
+  private readonly tableAlias?: string;
+  private readonly plainWhere?: Record<string, unknown>;
+
+  constructor(entityClass: T, options: { where?: Partial<InstanceType<T>>; tableAlias?: string }) {
+    const { where, tableAlias } = options;
+
     super();
 
-    this.entityConstructor = entityConstructor;
+    this.entityClass = entityClass;
+    this.entityOption = getMariadbEntityOptions(entityClass);
+    this.tableAlias = tableAlias;
+
     if (where) {
       if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
       this.plainWhere = classToPlain(where, { exposeUnsetFields: false });
@@ -18,46 +28,67 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   }
 
   /**
-   * 프로퍼티명으로 이름이 지정된 컬럼이름 목록을 반환
+   * 프로퍼티명으로 alias가 지정된 컬럼이름 목록을 반환
    * 예시 : data_column1 AS dataColumn1, data_column2 AS dataColumn2 ...
    *
-   * @returns
+   * @param props
+   * @param includeColumnAlias column alias 포함
    */
-  public columns(props: K[], tableAlias?: string): string {
-    return `${props.map(p => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(p.toString())} AS ${p}`).join(',')}`;
+  public columns(props: K[], options: { includeColumnAlias?: boolean } = {}): string {
+    const { includeColumnAlias = true } = options;
+    return `${props.map(p => this.column(p, { includeColumnAlias })).join(',')}`;
   }
 
-  public order(condition: Partial<Record<K, OrderByMode>>, tableAlias?: string): string {
+  /**
+   * 프로퍼티명으로 alias가 지정된 컬럼이름을 반환
+   *
+   * @param props
+   * @param includeColumnAlias column alias 포함
+   */
+  public column(prop: K, options: { includeColumnAlias?: boolean } = {}): string {
+    const { includeColumnAlias = true } = options;
+    return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}${includeColumnAlias ? ' AS ' + prop : ''}`;
+  }
+
+  public order(condition: Partial<Record<K, OrderByMode>>): string {
     return Object.entries(condition)
-      .map(prop => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(prop[0])} ${prop[1]}`)
+      .map(prop => `${this.column(prop[0] as K, { includeColumnAlias: false })} ${prop[1]}`)
       .join(',');
   }
 
-  public whereEqual(args: { operator?: SqlWhereOperator; tableAlias?: string } = {}): string {
-    const { operator = 'AND', tableAlias } = args;
+  public whereEqual(args: { operator?: SqlWhereOperator } = {}): string {
+    const { operator = 'AND' } = args;
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
 
     const sql = Object.keys(this.plainWhere)
-      .map(propName => `${tableAlias ? tableAlias + '.' : ''}${this.toSnakecase(propName)}=:${this.valueBindName(propName, tableAlias)}`)
+      .map(prop => `${this.column(prop as K, { includeColumnAlias: false })}=:${this.valueAlias(prop)}`)
       .join(` ${operator} `);
     return sql;
   }
 
-  public whereValues(tableAlias?: string): Record<string, unknown> {
+  public whereValues(): Record<string, unknown> {
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
-    if (tableAlias) {
+
+    if (this.tableAlias) {
       const values: Record<string, unknown> = {};
-      for (const propName of Object.keys(this.plainWhere)) {
-        values[this.valueBindName(propName, tableAlias)] = values[propName];
+      for (const prop of Object.keys(this.plainWhere)) {
+        values[this.valueAlias(prop)] = this.plainWhere[prop];
       }
+      return values;
     } else {
       return this.plainWhere;
     }
-
-    return this.plainWhere;
   }
 
-  private valueBindName(propName: string, tableAlias?: string) {
-    return tableAlias ? tableAlias + '_' + propName : propName;
+  private valueAlias(prop: string) {
+    return this.tableAlias ? this.tableAlias + '_' + prop : prop;
+  }
+
+  public get tablePath(): string {
+    return this.entityOption.tablePath + (this.tableAlias ? ' AS `' + this.tableAlias + '`' : '');
+  }
+
+  public get host(): MariadbHostOptions {
+    return this.entityOption.host;
   }
 }

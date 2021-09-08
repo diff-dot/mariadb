@@ -1,4 +1,4 @@
-import { MariadbHostOptions } from './MariadbHostOptions';
+import { MariadbHostOptions } from '../config/MariadbHostOptions';
 
 export interface MariadbEntityDecoratorOptions {
   db: string;
