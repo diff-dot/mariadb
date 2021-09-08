@@ -34,9 +34,9 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    * @param props
    * @param includeColumnAlias column alias 포함
    */
-  public columns(props: K[], options: { includeColumnAlias?: boolean } = {}): string {
-    const { includeColumnAlias = true } = options;
-    return `${props.map(p => this.column(p, { includeColumnAlias })).join(',')}`;
+  public columns(props: K[], options: { alias?: boolean } = {}): string {
+    const { alias = true } = options;
+    return `${props.map(p => this.column(p, { alias: alias })).join(',')}`;
   }
 
   /**
@@ -45,14 +45,14 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    * @param props
    * @param includeColumnAlias column alias 포함
    */
-  public column(prop: K, options: { includeColumnAlias?: boolean } = {}): string {
-    const { includeColumnAlias = true } = options;
-    return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}${includeColumnAlias ? ' AS ' + prop : ''}`;
+  public column(prop: K, options: { alias?: boolean } = {}): string {
+    const { alias = true } = options;
+    return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}${alias ? ' AS ' + prop : ''}`;
   }
 
   public order(condition: Partial<Record<K, OrderByMode>>): string {
     return Object.entries(condition)
-      .map(prop => `${this.column(prop[0] as K, { includeColumnAlias: false })} ${prop[1]}`)
+      .map(prop => `${this.column(prop[0] as K, { alias: false })} ${prop[1]}`)
       .join(',');
   }
 
@@ -61,7 +61,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
 
     const sql = Object.keys(this.plainWhere)
-      .map(prop => `${this.column(prop as K, { includeColumnAlias: false })}=:${this.valueAlias(prop)}`)
+      .map(prop => `${this.column(prop as K, { alias: false })}=:${this.valueAlias(prop)}`)
       .join(` ${operator} `);
     return sql;
   }

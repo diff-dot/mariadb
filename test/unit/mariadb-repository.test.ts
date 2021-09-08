@@ -42,7 +42,7 @@ class SinglePkRepo extends MariadbRepository {
 
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
     return this.entity({
-      entityConstructor: SinglePkEntity,
+      entityClass: SinglePkEntity,
       where: SinglePkEntity.partial({ testEntityId }),
       operator: 'AND',
       props
@@ -51,7 +51,7 @@ class SinglePkRepo extends MariadbRepository {
 
   async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
     return this.entities({
-      entityConstructor: SinglePkEntity,
+      entityClass: SinglePkEntity,
       props,
       where: SinglePkEntity.partial({ idx: index }),
       order: { idx: 'DESC' },
@@ -60,7 +60,7 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async testEntityCount(data: string): Promise<number> {
-    const res = this.count({ entityConstructor: SinglePkEntity, where: SinglePkEntity.partial({ data }) });
+    const res = this.count({ entityClass: SinglePkEntity, where: SinglePkEntity.partial({ data }) });
     return res;
   }
 
@@ -102,7 +102,7 @@ class AutoIncPkRepo extends MariadbRepository {
 
   async testEntity<K extends keyof AutoIncPkEntity>(id: number, props: K[]): Promise<Pick<AutoIncPkEntity, K> | undefined> {
     return this.entity({
-      entityConstructor: AutoIncPkEntity,
+      entityClass: AutoIncPkEntity,
       props,
       where: AutoIncPkEntity.partial({ id })
     });

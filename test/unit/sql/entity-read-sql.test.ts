@@ -46,7 +46,7 @@ describe('repo > entity-read-sql.test', () => {
   });
 
   it('컬럼 이름만 반환', () => {
-    expect(entitySql.column('carmelCaseField', { includeColumnAlias: false })).to.be.eq('T1.carmel_case_field');
+    expect(entitySql.column('carmelCaseField', { alias: false })).to.be.eq('T1.carmel_case_field');
   });
 
   it('테이블 경로 ( ${DB}.${Table} AS ${TableAlias} ) 반환', () => {
