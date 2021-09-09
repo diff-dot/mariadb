@@ -56,6 +56,10 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
       .join(',');
   }
 
+  public limit(args: { offset?: number; size: number }) {
+    return `${args.offset || 0},${args.size}`;
+  }
+
   public whereEqual(args: { operator?: SqlWhereOperator } = {}): string {
     const { operator = 'AND' } = args;
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
