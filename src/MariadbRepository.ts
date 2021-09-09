@@ -3,7 +3,7 @@ import { plainToClass } from 'class-transformer';
 import { PoolConnection } from 'mariadb';
 import { MariadbClient } from './MariaDBClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
-import { OrderByMode } from './type/OrderByMode';
+import { OrderByProp } from './type/OrderByProp';
 import { SqlWhereOperator } from './type/SqlWhereOperator';
 import { WriteResult } from './type/WriteResult';
 
@@ -44,7 +44,7 @@ export abstract class MariadbRepository extends Repository {
     where?: Partial<T>;
     operator?: SqlWhereOperator;
     props: K[];
-    order?: Partial<Record<keyof T, OrderByMode>>;
+    order?: OrderByProp<T>;
     offset?: number;
     size: number;
     connection?: PoolConnection;
