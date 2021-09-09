@@ -12,7 +12,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   private readonly tableAlias?: string;
   private readonly plainWhere?: Record<string, unknown>;
 
-  constructor(entityClass: T, options: { where?: Partial<InstanceType<T>>; tableAlias?: string }) {
+  constructor(entityClass: T, options: { where?: Partial<InstanceType<T>>; tableAlias?: string } = {}) {
     const { where, tableAlias } = options;
 
     super();
