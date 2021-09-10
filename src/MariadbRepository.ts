@@ -46,7 +46,7 @@ export abstract class MariadbRepository extends Repository {
     props: K[];
     order?: OrderByProp<T>;
     offset?: number;
-    size: number;
+    size?: number;
     connection?: PoolConnection;
   }): Promise<Pick<T, K>[]> {
     const { entityClass, where, operator = 'AND', props, order, offset = 0, size } = args;
@@ -59,7 +59,7 @@ export abstract class MariadbRepository extends Repository {
         `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath}
         ${where ? 'WHERE ' + entitySql.whereEqual({ operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
-        LIMIT ${offset}, ${size}`,
+        ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}`,
         entitySql.whereValues()
       );
 
