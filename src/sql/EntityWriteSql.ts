@@ -3,6 +3,7 @@ import { Entity, EntityIdOptions, getEntityIdProps } from '@diff./repository';
 import { EntitySql } from './EntitySql';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { MariadbHostOptions } from '../config/MariadbHostOptions';
+import { SqlWhereOperator } from '../type/SqlWhereOperator';
 /**
  * Entity 의 insert 또는 update 에 사용할 SQL 쿼리 생성기
  *
@@ -13,7 +14,7 @@ import { MariadbHostOptions } from '../config/MariadbHostOptions';
 export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntitySql {
   private readonly entity: T;
   public readonly entityOption: MariadbEntityDescriptor;
-  private readonly plainEntity: Record<string, unknown>;
+  private readonly plainPlacedValue: Record<string, unknown>;
   private readonly entityIdProps: Map<string, EntityIdOptions> | undefined; // entity id 정보
   private readonly propNames: string[]; // 값이 있는 모든 property 이름 목록
   private readonly fieldIndex: Map<string, string>; // property 이름으로 으로 field 이름을 찾을 떄 사용할 인덱스
@@ -31,14 +32,14 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
     this.entityIdProps = getEntityIdProps(entity);
 
     // 저장가능한 형태로 변환하고 값이 지정되지 않은 property 삭제
-    this.plainEntity = classToPlain(entity, { exposeUnsetFields: false });
+    this.plainPlacedValue = classToPlain(entity, { exposeUnsetFields: false });
 
     // property 목록 추출 및 필드명 인덱스 구축
     this.propNames = [];
     this.fieldIndex = new Map();
     this.propNameIndex = new Map();
-    for (const propName of Object.keys(this.plainEntity)) {
-      if (this.plainEntity[propName] === undefined) continue;
+    for (const propName of Object.keys(this.plainPlacedValue)) {
+      if (this.plainPlacedValue[propName] === undefined) continue;
 
       // 값이 있는 props 의 키 목록 추출
       this.propNames.push(propName);
@@ -76,7 +77,7 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
    * insert sql에 사용할 값 이름 목록 생성
    * 예시 :column1, :column2
    */
-  public valuesPlaceholder(): string {
+  public props(): string {
     return `${this.propNames.map(p => ':' + p).join(',')}`;
   }
 
@@ -84,7 +85,7 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
    * entityId 를 제외한 값 property 의 업데이트 SQL 조건
    * 예시 : value=:value,  value2=:value2
    */
-  public updatePlaceholder(): string {
+  public updateProps(): string {
     return this.propNames
       .filter(p => !this.idPropNames.includes(p))
       .map(p => `${this.fieldIndex.get(p)}=:${p}`)
@@ -98,19 +99,37 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
   public whereById(): string {
     // entityId 의 값이 있는지 확인
     for (const propName of this.idPropNames) {
-      if (!this.plainEntity[propName]) {
+      if (!this.plainPlacedValue[propName]) {
         throw new Error(`EntityId(${propName}) not defined to plained ${this.entity.constructor.name}`);
       }
     }
     return this.idPropNames.map(p => `${this.toSnakecase(p)}=:${p}`).join(' AND ');
   }
 
+  public whereEqual(where: Partial<T>, options: { operator?: SqlWhereOperator } = {}): string {
+    const { operator = 'AND' } = options;
+
+    if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
+    const plainWhere = classToPlain(where, { exposeUnsetFields: false });
+
+    const terms: string[] = [];
+    for (const [prop, value] of Object.entries(plainWhere)) {
+      // SQL 조건문 생성
+      terms.push(`${this.toSnakecase(prop)}=:${prop}`);
+
+      // SQL 조건문에 포함된 placeholder 를 대치할 값 저장
+      this.plainPlacedValue[prop] = value;
+    }
+
+    return terms.join(` ${operator} `);
+  }
+
   /**
    * 저장 가능한 형태의 값 목록을 반환
    * @returns
    */
-  public values(): Record<string, unknown> {
-    return this.plainEntity;
+  public placedValues(): Record<string, unknown> {
+    return this.plainPlacedValue;
   }
 
   public get tablePath(): string {

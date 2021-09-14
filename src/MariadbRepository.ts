@@ -21,15 +21,15 @@ export abstract class MariadbRepository extends Repository {
   }): Promise<Pick<T, K> | undefined> {
     const { entityClass, where, operator = 'AND', props, forUpdate = false } = args;
 
-    const entitySql = new EntityReadSql(entityClass, { where });
+    const entitySql = new EntityReadSql(entityClass);
     const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual({ operator })} LIMIT 1 ${
+        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(where, { operator })} LIMIT 1 ${
           forUpdate ? 'FOR UPDATE' : ''
         }`,
-        entitySql.whereValues()
+        entitySql.placedValues()
       );
 
       if (!res.length) return undefined;
@@ -51,16 +51,16 @@ export abstract class MariadbRepository extends Repository {
   }): Promise<Pick<T, K>[]> {
     const { entityClass, where, operator = 'AND', props, order, offset = 0, size } = args;
 
-    const entitySql = new EntityReadSql(entityClass, { where });
+    const entitySql = new EntityReadSql(entityClass);
 
     const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
     try {
       const res = await connections.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath}
-        ${where ? 'WHERE ' + entitySql.whereEqual({ operator }) : ''}
+        ${where ? 'WHERE ' + entitySql.whereEqual(where, { operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}`,
-        entitySql.whereValues()
+        entitySql.placedValues()
       );
 
       const entities: Pick<T, K>[] = [];
@@ -83,13 +83,13 @@ export abstract class MariadbRepository extends Repository {
   }): Promise<number> {
     const { entityClass, where, operator = 'AND', forUpdate = false } = args;
 
-    const entitySql = new EntityReadSql(entityClass, { where });
+    const entitySql = new EntityReadSql(entityClass);
     const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT COUNT(*) AS count FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual({ operator })} ${forUpdate ? 'FOR UPDATE' : ''}`,
-        entitySql.whereValues()
+        `SELECT COUNT(*) AS count FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(where, { operator })} ${forUpdate ? 'FOR UPDATE' : ''}`,
+        entitySql.placedValues()
       );
       return res[0].count;
     } finally {
@@ -103,8 +103,8 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connection.query(
-        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.valuesPlaceholder()})`,
-        entitySql.values()
+        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.props()})`,
+        entitySql.placedValues()
       );
       return res;
     } finally {
@@ -118,8 +118,8 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await selectedConn.query(
-        `UPDATE ${entitySql.tablePath} SET ${entitySql.updatePlaceholder()} WHERE ${entitySql.whereById()}`,
-        entitySql.values()
+        `UPDATE ${entitySql.tablePath} SET ${entitySql.updateProps()} WHERE ${entitySql.whereById()}`,
+        entitySql.placedValues()
       );
       return res;
     } finally {
@@ -132,7 +132,7 @@ export abstract class MariadbRepository extends Repository {
     const selectedConn = options.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
-      const res = await selectedConn.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.values());
+      const res = await selectedConn.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.placedValues());
       return res;
     } finally {
       if (!options.connection) await selectedConn.release();

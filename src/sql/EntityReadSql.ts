@@ -10,21 +10,17 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   private readonly entityClass: T;
   public readonly entityOption: MariadbEntityDescriptor;
   private readonly tableAlias?: string;
-  private readonly plainWhere?: Record<string, unknown>;
+  private readonly plainPlacedValue: Record<string, unknown>;
 
-  constructor(entityClass: T, options: { where?: Partial<InstanceType<T>>; tableAlias?: string } = {}) {
-    const { where, tableAlias } = options;
+  constructor(entityClass: T, options: { tableAlias?: string } = {}) {
+    const { tableAlias } = options;
 
     super();
 
     this.entityClass = entityClass;
     this.entityOption = getMariadbEntityOptions(entityClass);
     this.tableAlias = tableAlias;
-
-    if (where) {
-      if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
-      this.plainWhere = classToPlain(where, { exposeUnsetFields: false });
-    }
+    this.plainPlacedValue = {};
   }
 
   /**
@@ -32,11 +28,16 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    * 예시 : data_column1 AS dataColumn1, data_column2 AS dataColumn2 ...
    *
    * @param props
-   * @param includeColumnAlias column alias 포함
+   * @param options.rename 칼 컬럼의 alias 를 별도 지정, 지정되지 않은 컬럼은 프로퍼티명을 사용
    */
-  public select(props: K[], options: { alias?: boolean } = {}): string {
-    const { alias = true } = options;
-    return props.map(p => `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(p.toString())}${alias ? ' AS ' + p : ''}`).join(',');
+  public select(props: K[], options: { alias?: Partial<Record<K, string>> } = {}): string {
+    const { alias } = options;
+    return props
+      .map(prop => {
+        const columnAlias = alias && alias[prop] ? alias[prop] : prop;
+        return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}${' AS ' + columnAlias}`;
+      })
+      .join(',');
   }
 
   /**
@@ -58,31 +59,31 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     return `${args.offset || 0},${args.size}`;
   }
 
-  public whereEqual(args: { operator?: SqlWhereOperator } = {}): string {
-    const { operator = 'AND' } = args;
-    if (!this.plainWhere) throw new Error('Entity where condition not defined.');
+  public whereEqual(where: Partial<InstanceType<T>>, options: { operator?: SqlWhereOperator } = {}): string {
+    const { operator = 'AND' } = options;
 
-    const sql = Object.keys(this.plainWhere)
-      .map(prop => `${this.column(prop as K)}=:${this.valueAlias(prop)}`)
-      .join(` ${operator} `);
-    return sql;
-  }
+    if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
+    const plainWhere = classToPlain(where, { exposeUnsetFields: false });
 
-  public whereValues(): Record<string, unknown> {
-    if (!this.plainWhere) throw new Error('Entity where condition not defined.');
+    const terms: string[] = [];
+    for (const [prop, value] of Object.entries(plainWhere)) {
+      const placeholder = this.placeholderName(prop);
 
-    if (this.tableAlias) {
-      const values: Record<string, unknown> = {};
-      for (const prop of Object.keys(this.plainWhere)) {
-        values[this.valueAlias(prop)] = this.plainWhere[prop];
-      }
-      return values;
-    } else {
-      return this.plainWhere;
+      // SQL 조건문 생성
+      terms.push(`${this.column(prop as K)}=:${placeholder}`);
+
+      // SQL 조건문에 포함된 placeholder 를 대치할 값 저장
+      this.plainPlacedValue[placeholder] = value;
     }
+
+    return terms.join(` ${operator} `);
   }
 
-  private valueAlias(prop: string) {
+  public placedValues(): Record<string, unknown> {
+    return this.plainPlacedValue;
+  }
+
+  private placeholderName(prop: string) {
     return this.tableAlias ? this.tableAlias + '_' + prop : prop;
   }
 

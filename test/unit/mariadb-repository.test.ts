@@ -65,14 +65,14 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async testEntityByCustomQuery<K extends keyof SinglePkEntity>(data: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
-    const entitySql = new EntityReadSql(SinglePkEntity, { where: SinglePkEntity.partial({ data }), tableAlias: 'T1' });
+    const entitySql = new EntityReadSql(SinglePkEntity, { tableAlias: 'T1' });
 
     let conn: PoolConnection | undefined;
     try {
       conn = await MariadbClient.instance(entitySql.host).connection();
       const res = await conn.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual()}`,
-        entitySql.whereValues()
+        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(SinglePkEntity.partial({ data }))}`,
+        entitySql.placedValues()
       );
       if (!res.length) return undefined;
       return plainToClass(SinglePkEntity, res[0]);
