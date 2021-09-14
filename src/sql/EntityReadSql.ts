@@ -34,25 +34,23 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    * @param props
    * @param includeColumnAlias column alias 포함
    */
-  public columns(props: K[], options: { alias?: boolean } = {}): string {
+  public select(props: K[], options: { alias?: boolean } = {}): string {
     const { alias = true } = options;
-    return `${props.map(p => this.column(p, { alias: alias })).join(',')}`;
+    return props.map(p => `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(p.toString())}${alias ? ' AS ' + p : ''}`).join(',');
   }
 
   /**
-   * 프로퍼티명으로 alias가 지정된 컬럼이름을 반환
+   * 프로퍼티의 컬럼 이름 반환
    *
-   * @param props
-   * @param includeColumnAlias column alias 포함
+   * @param prop
    */
-  public column(prop: K, options: { alias?: boolean } = {}): string {
-    const { alias = true } = options;
-    return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}${alias ? ' AS ' + prop : ''}`;
+  public column(prop: K): string {
+    return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}`;
   }
 
   public order(condition: Partial<Record<K, OrderByMode>>): string {
     return Object.entries(condition)
-      .map(prop => `${this.column(prop[0] as K, { alias: false })} ${prop[1]}`)
+      .map(prop => `${this.column(prop[0] as K)} ${prop[1]}`)
       .join(',');
   }
 
@@ -65,7 +63,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     if (!this.plainWhere) throw new Error('Entity where condition not defined.');
 
     const sql = Object.keys(this.plainWhere)
-      .map(prop => `${this.column(prop as K, { alias: false })}=:${this.valueAlias(prop)}`)
+      .map(prop => `${this.column(prop as K)}=:${this.valueAlias(prop)}`)
       .join(` ${operator} `);
     return sql;
   }

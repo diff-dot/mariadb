@@ -26,7 +26,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual({ operator })} LIMIT 1 ${
+        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual({ operator })} LIMIT 1 ${
           forUpdate ? 'FOR UPDATE' : ''
         }`,
         entitySql.whereValues()
@@ -56,7 +56,7 @@ export abstract class MariadbRepository extends Repository {
     const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
     try {
       const res = await connections.query(
-        `SELECT ${entitySql.columns(props)} FROM ${entitySql.tablePath}
+        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath}
         ${where ? 'WHERE ' + entitySql.whereEqual({ operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}`,

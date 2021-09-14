@@ -22,7 +22,7 @@ const entitySql = new EntityReadSql(TestEntity, { where: TestEntity.partial({ ca
 
 describe('repo > entity-read-sql.test', () => {
   it('프로퍼티명으로 이름이 지정된 컬럼이름 목록을 반환', () => {
-    expect(entitySql.columns(['carmelCaseField'])).to.be.eq('T1.carmel_case_field AS carmelCaseField');
+    expect(entitySql.select(['carmelCaseField'])).to.be.eq('T1.carmel_case_field AS carmelCaseField');
   });
 
   it('order 쿼리 반환', () => {
@@ -41,12 +41,8 @@ describe('repo > entity-read-sql.test', () => {
     expect(entitySql.whereValues()).to.be.eql({ T1_carmelCaseField: '1' });
   });
 
-  it('프로퍼티 이름으로 alias 가 지정된 컬럼 이름 반환', () => {
-    expect(entitySql.column('carmelCaseField')).to.be.eq('T1.carmel_case_field AS carmelCaseField');
-  });
-
-  it('컬럼 이름만 반환', () => {
-    expect(entitySql.column('carmelCaseField', { alias: false })).to.be.eq('T1.carmel_case_field');
+  it('컬럼 이름 반환', () => {
+    expect(entitySql.column('carmelCaseField')).to.be.eq('T1.carmel_case_field');
   });
 
   it('테이블 경로 ( ${DB}.${Table} AS ${TableAlias} ) 반환', () => {
