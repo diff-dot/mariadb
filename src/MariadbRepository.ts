@@ -33,7 +33,7 @@ export abstract class MariadbRepository extends Repository {
       );
 
       if (!res.length) return undefined;
-      return plainToClass(entityClass, res[0] as Record<string, unknown>);
+      return plainToClass(entityClass, res[0] as Record<string, unknown>, { exposeUnsetFields: false });
     } finally {
       if (!args.connection) await connections.release();
     }
@@ -65,7 +65,7 @@ export abstract class MariadbRepository extends Repository {
 
       const entities: Pick<T, K>[] = [];
       for (const row of res) {
-        entities.push(plainToClass(entityClass, row));
+        entities.push(plainToClass(entityClass, row, { exposeUnsetFields: false }));
       }
 
       return entities;

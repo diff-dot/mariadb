@@ -75,7 +75,7 @@ class SinglePkRepo extends MariadbRepository {
         entitySql.placedValues()
       );
       if (!res.length) return undefined;
-      return plainToClass(SinglePkEntity, res[0]);
+      return plainToClass(SinglePkEntity, res[0], { exposeUnsetFields: false });
     } catch (e) {
       throw e;
     } finally {
