@@ -138,4 +138,27 @@ export abstract class MariadbRepository extends Repository {
       if (!options.connection) await selectedConn.release();
     }
   }
+
+  /**
+   * tableAlias 를 prefix 로 가지는 property 들을 tableAlias에 따라 분류하여 반환
+   */
+  protected groupingPropByTableAlias<K extends string>(
+    record: Record<string, unknown>,
+    prefixes: K[],
+    delimiter = '_'
+  ): Record<K, Record<string, unknown>> {
+    const result: Record<string, Record<string, unknown>> = {};
+    for (const propName of Object.keys(record)) {
+      const delimiterPos = propName.indexOf(delimiter);
+
+      const prefix = delimiterPos != -1 ? propName.substr(0, delimiterPos) : undefined;
+      if (!prefix || !prefixes.includes(prefix as K)) continue;
+
+      const orgPropName = propName.substr(delimiterPos + delimiter.length);
+      if (!result[prefix]) result[prefix] = {};
+      result[prefix][orgPropName] = record[propName];
+    }
+
+    return result as Record<K, Record<string, unknown>>;
+  }
 }
