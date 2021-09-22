@@ -28,13 +28,15 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
    * 예시 : data_column1 AS dataColumn1, data_column2 AS dataColumn2 ...
    *
    * @param props
-   * @param options.rename 칼 컬럼의 alias 를 별도 지정, 지정되지 않은 컬럼은 프로퍼티명을 사용
+   * @param options.tableAliasPrefix 테이블 alias 가 있을 경우 프로퍼티 이름의 prefix로 적용
+   * @param options.alias 칼 컬럼의 alias 를 별도 지정, 지정되지 않은 컬럼은 프로퍼티명을 사용
    */
-  public select(props: K[], options: { alias?: Partial<Record<K, string>> } = {}): string {
-    const { alias } = options;
+  public select(props: K[], options: { tableAliasPrefix?: boolean; alias?: Partial<Record<K, string>> } = {}): string {
+    const { tableAliasPrefix, alias } = options;
+    const propPrefix = tableAliasPrefix && this.tableAlias ? this.tableAlias + '_' : '';
     return props
       .map(prop => {
-        const columnAlias = alias && alias[prop] ? alias[prop] : prop;
+        const columnAlias = propPrefix + (alias && alias[prop] ? alias[prop] : prop);
         return `${this.tableAlias ? this.tableAlias + '.' : ''}${this.toSnakecase(prop.toString())}${' AS ' + columnAlias}`;
       })
       .join(',');

@@ -29,6 +29,18 @@ describe('repo > entity-read-sql.test', () => {
     expect(entitySql.select(['carmelCaseField'], { alias: { carmelCaseField: 'w' } })).to.be.eq('T1.carmel_case_field AS w');
   });
 
+  it('tableAlias 를 컬럼별 alias 에 prefix로 적용', () => {
+    const entitySql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
+    expect(entitySql.select(['carmelCaseField'], { tableAliasPrefix: true })).to.be.eq('T1.carmel_case_field AS T1_carmelCaseField');
+  });
+
+  it('tableAlias 를 별도 지정된 컬럼별 alias 에 prefix로 적용', () => {
+    const entitySql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
+    expect(entitySql.select(['carmelCaseField'], { tableAliasPrefix: true, alias: { carmelCaseField: 'w' } })).to.be.eq(
+      'T1.carmel_case_field AS T1_w'
+    );
+  });
+
   it('order 쿼리 반환', () => {
     const entitySql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
     expect(entitySql.order({ testEntityId: 'ASC', data: 'DESC' })).to.be.eq('T1.test_entity_id ASC,T1.data DESC');
