@@ -1,7 +1,7 @@
 import { Entity, Repository } from '@diff./repository';
 import { plainToClass } from 'class-transformer';
 import { PoolConnection } from 'mariadb';
-import { MariadbClient } from './MariaDBClient';
+import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { OrderByProp } from './type/OrderByProp';
 import { SqlWhereOperator } from './type/SqlWhereOperator';
