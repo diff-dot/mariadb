@@ -3,6 +3,7 @@ import { classToPlain } from 'class-transformer';
 import { MariadbHostOptions } from '../config';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
+import { RowLevelLockMode } from '../type/RowLevelLockMode';
 import { SqlWhereOperator } from '../type/SqlWhereOperator';
 import { EntitySql } from './EntitySql';
 
@@ -79,6 +80,14 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     }
 
     return terms.join(` ${operator} `);
+  }
+
+  public rowLevelLock(mode: RowLevelLockMode) {
+    if (mode === 'SHARED') return 'LOCK IN SHARE MODE';
+    else if (mode === 'EXCLUSIVE') return 'FOR UPDATE';
+    else {
+      throw new Error('Unsupport row level lock mode : ' + mode);
+    }
   }
 
   public placedValues(): Record<string, unknown> {

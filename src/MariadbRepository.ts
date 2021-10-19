@@ -4,6 +4,7 @@ import { PoolConnection } from 'mariadb';
 import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { OrderByProp } from './type/OrderByProp';
+import { RowLevelLockMode } from './type/RowLevelLockMode';
 import { SqlWhereOperator } from './type/SqlWhereOperator';
 import { WriteResult } from './type/WriteResult';
 
@@ -17,9 +18,9 @@ export abstract class MariadbRepository extends Repository {
     operator?: SqlWhereOperator;
     props: K[];
     connection?: PoolConnection;
-    forUpdate?: boolean;
+    lock?: RowLevelLockMode;
   }): Promise<Pick<T, K> | undefined> {
-    const { entityClass, where, operator = 'AND', props, forUpdate = false } = args;
+    const { entityClass, where, operator = 'AND', props, lock } = args;
 
     const entitySql = new EntityReadSql(entityClass);
     const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
@@ -27,7 +28,7 @@ export abstract class MariadbRepository extends Repository {
     try {
       const res = await connections.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(where, { operator })} LIMIT 1 ${
-          forUpdate ? 'FOR UPDATE' : ''
+          lock ? entitySql.rowLevelLock(lock) : ''
         }`,
         entitySql.placedValues()
       );
@@ -48,8 +49,9 @@ export abstract class MariadbRepository extends Repository {
     offset?: number;
     size?: number;
     connection?: PoolConnection;
+    lock?: RowLevelLockMode;
   }): Promise<Pick<T, K>[]> {
-    const { entityClass, where, operator = 'AND', props, order, offset = 0, size } = args;
+    const { entityClass, where, operator = 'AND', props, order, offset = 0, size, lock } = args;
 
     const entitySql = new EntityReadSql(entityClass);
 
@@ -59,7 +61,8 @@ export abstract class MariadbRepository extends Repository {
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath}
         ${where ? 'WHERE ' + entitySql.whereEqual(where, { operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
-        ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}`,
+        ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}
+        ${lock ? entitySql.rowLevelLock(lock) : ''}`,
         entitySql.placedValues()
       );
 
@@ -79,16 +82,18 @@ export abstract class MariadbRepository extends Repository {
     where: Partial<T>;
     operator?: SqlWhereOperator;
     connection?: PoolConnection;
-    forUpdate?: boolean;
+    lock?: RowLevelLockMode;
   }): Promise<number> {
-    const { entityClass, where, operator = 'AND', forUpdate = false } = args;
+    const { entityClass, where, operator = 'AND', lock } = args;
 
     const entitySql = new EntityReadSql(entityClass);
     const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
 
     try {
       const res = await connections.query(
-        `SELECT COUNT(*) AS count FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(where, { operator })} ${forUpdate ? 'FOR UPDATE' : ''}`,
+        `SELECT COUNT(*) AS count FROM ${entitySql.tablePath}
+        WHERE ${entitySql.whereEqual(where, { operator })}
+        ${lock ? entitySql.rowLevelLock(lock) : ''}`,
         entitySql.placedValues()
       );
       return res[0].count;
