@@ -83,8 +83,8 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   }
 
   public rowLevelLock(mode: RowLevelLockMode) {
-    if (mode === 'SHARED') return 'LOCK IN SHARE MODE';
-    else if (mode === 'EXCLUSIVE') return 'FOR UPDATE';
+    if (mode === 'shared') return 'LOCK IN SHARE MODE';
+    else if (mode === 'exclusive') return 'FOR UPDATE';
     else {
       throw new Error('Unsupport row level lock mode : ' + mode);
     }

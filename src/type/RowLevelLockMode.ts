@@ -1,1 +1,1 @@
-export type RowLevelLockMode = 'SHARED' | 'EXCLUSIVE';
+export type RowLevelLockMode = 'shared' | 'exclusive';
