@@ -2,7 +2,6 @@ import { classToPlain } from 'class-transformer';
 import { Entity, EntityIdOptions, getEntityIdProps } from '@diff./repository';
 import { EntitySql } from './EntitySql';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
-import { MariadbHostOptions } from '../config/MariadbHostOptions';
 import { SqlWhereOperator } from '../type/SqlWhereOperator';
 /**
  * Entity 의 insert 또는 update 에 사용할 SQL 쿼리 생성기
@@ -134,9 +133,5 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
 
   public get tablePath(): string {
     return this.entityOption.tablePath;
-  }
-
-  public get host(): MariadbHostOptions {
-    return this.entityOption.host;
   }
 }

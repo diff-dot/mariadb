@@ -1,6 +1,6 @@
 {
   "name": "@diff./mariadb",
-  "version": "1.0.32",
+  "version": "2.0.0",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

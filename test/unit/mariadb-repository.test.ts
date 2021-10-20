@@ -8,7 +8,7 @@ import { hostOptions } from './env/host';
 import { PoolConnection } from 'mariadb';
 import { EntityReadSql } from '../../src/sql';
 
-@MariadbEntity({ db: 'test', table: 'single_pk_test', host: hostOptions })
+@MariadbEntity({ db: 'test', table: 'single_pk_test' })
 class SinglePkEntity extends Entity {
   @EntityId()
   @Expose()
@@ -24,7 +24,7 @@ class SinglePkEntity extends Entity {
   carmelCaseField: number | null;
 }
 
-@MariadbEntity({ db: 'test', table: 'auto_inc_pk', host: hostOptions })
+@MariadbEntity({ db: 'test', table: 'auto_inc_pk' })
 class AutoIncPkEntity extends Entity {
   @EntityId()
   @Expose()
@@ -35,6 +35,10 @@ class AutoIncPkEntity extends Entity {
 }
 
 class SinglePkRepo extends MariadbRepository {
+  defaultHost() {
+    return hostOptions;
+  }
+
   async addTestEntity(entity: SinglePkEntity): Promise<boolean> {
     const res = await this.addEntity(entity);
     return res.affectedRows === 1;
@@ -69,7 +73,7 @@ class SinglePkRepo extends MariadbRepository {
 
     let conn: PoolConnection | undefined;
     try {
-      conn = await MariadbClient.instance(entitySql.host).connection();
+      conn = await this.client.connection();
       const res = await conn.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(SinglePkEntity.partial({ data }))}`,
         entitySql.placedValues()
@@ -95,6 +99,10 @@ class SinglePkRepo extends MariadbRepository {
 }
 
 class AutoIncPkRepo extends MariadbRepository {
+  defaultHost() {
+    return hostOptions;
+  }
+
   async addTestEntity(entity: AutoIncPkEntity): Promise<number> {
     const res = await this.addEntity(entity);
     return res.insertId;

@@ -1,6 +1,5 @@
 import { Entity } from '@diff./repository';
 import { classToPlain } from 'class-transformer';
-import { MariadbHostOptions } from '../config';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
 import { RowLevelLockMode } from '../type/RowLevelLockMode';
@@ -100,9 +99,5 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
 
   public get tablePath(): string {
     return this.entityOption.tablePath + (this.tableAlias ? ' AS `' + this.tableAlias + '`' : '');
-  }
-
-  public get host(): MariadbHostOptions {
-    return this.entityOption.host;
   }
 }

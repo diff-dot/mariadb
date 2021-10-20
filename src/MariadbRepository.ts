@@ -1,6 +1,7 @@
 import { Entity, Repository } from '@diff./repository';
 import { plainToClass } from 'class-transformer';
 import { PoolConnection } from 'mariadb';
+import { MariadbHostOptions } from './config/MariadbHostOptions';
 import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { OrderByProp } from './type/OrderByProp';
@@ -12,6 +13,16 @@ import { WriteResult } from './type/WriteResult';
  * Entity 를 Mariadb 에서 관리하기 위한 클래스
  */
 export abstract class MariadbRepository extends Repository {
+  protected readonly client: MariadbClient;
+  constructor(args: { host?: MariadbHostOptions } = {}) {
+    super();
+    const { host } = args;
+
+    this.client = MariadbClient.instance(host || this.defaultHost());
+  }
+
+  protected abstract defaultHost(): MariadbHostOptions;
+
   protected async entity<T extends Entity, K extends keyof T>(args: {
     entityClass: { new (...args: unknown[]): T };
     where: Partial<T>;
@@ -23,7 +34,7 @@ export abstract class MariadbRepository extends Repository {
     const { entityClass, where, operator = 'AND', props, lock } = args;
 
     const entitySql = new EntityReadSql(entityClass);
-    const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
+    const connections = args.connection || (await this.client.connection());
 
     try {
       const res = await connections.query(
@@ -55,7 +66,7 @@ export abstract class MariadbRepository extends Repository {
 
     const entitySql = new EntityReadSql(entityClass);
 
-    const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
+    const connections = args.connection || (await this.client.connection());
     try {
       const res = await connections.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath}
@@ -87,7 +98,7 @@ export abstract class MariadbRepository extends Repository {
     const { entityClass, where, operator = 'AND', lock } = args;
 
     const entitySql = new EntityReadSql(entityClass);
-    const connections = args.connection || (await MariadbClient.instance(entitySql.host).connection());
+    const connections = args.connection || (await this.client.connection());
 
     try {
       const res = await connections.query(
@@ -104,7 +115,7 @@ export abstract class MariadbRepository extends Repository {
 
   protected async addEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
-    const connection = options.connection || (await MariadbClient.instance(entitySql.host).connection());
+    const connection = options.connection || (await this.client.connection());
 
     try {
       const res = await connection.query(
@@ -119,7 +130,7 @@ export abstract class MariadbRepository extends Repository {
 
   protected async updateEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
-    const selectedConn = options.connection || (await MariadbClient.instance(entitySql.host).connection());
+    const selectedConn = options.connection || (await this.client.connection());
 
     try {
       const res = await selectedConn.query(
@@ -134,7 +145,7 @@ export abstract class MariadbRepository extends Repository {
 
   protected async deleteEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
-    const selectedConn = options.connection || (await MariadbClient.instance(entitySql.host).connection());
+    const selectedConn = options.connection || (await this.client.connection());
 
     try {
       const res = await selectedConn.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.placedValues());

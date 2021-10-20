@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { MariadbHostOptions } from '../config/MariadbHostOptions';
 import { MariadbEntityDecoratorOptions } from '../type/MariadbEntityDecoratorOptions';
 
 export class MariadbEntityDescriptor implements MariadbEntityDecoratorOptions {
   db: string;
   table: string;
-  host: MariadbHostOptions;
 
   constructor(options: MariadbEntityDecoratorOptions) {
     Object.assign(this, options);
