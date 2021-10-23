@@ -52,8 +52,8 @@ describe('repo > entity-read-sql.test', () => {
 
   it('지정된 값과 일치하는 행을 찾기위한 where 쿼리 반환', () => {
     const entitySql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
-    expect(entitySql.whereEqual(TestEntity.partial({ carmelCaseField: '1' }))).to.be.eq('T1.carmel_case_field=:T1_carmelCaseField');
-    expect(entitySql.placedValues()).to.be.eql({ T1_carmelCaseField: '1' });
+    expect(entitySql.whereEqual(TestEntity.partial({ carmelCaseField: '1' }))).to.be.eq('T1.carmel_case_field=:T1_carmelCaseField_0');
+    expect(entitySql.placedValues()).to.be.eql({ T1_carmelCaseField_0: '1' });
   });
 
   it('컬럼 이름 반환', () => {

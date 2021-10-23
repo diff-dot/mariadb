@@ -69,7 +69,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
 
     const terms: string[] = [];
     for (const [prop, value] of Object.entries(plainWhere)) {
-      const placeholder = this.placeholderName(prop);
+      const placeholder = this.placeholderName(prop) + '_' + Object.keys(this.plainPlacedValue).length;
 
       // SQL 조건문 생성
       terms.push(`${this.column(prop as K)}=:${placeholder}`);

@@ -113,11 +113,13 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
 
     const terms: string[] = [];
     for (const [prop, value] of Object.entries(plainWhere)) {
+      const placeholder = prop + '_' + Object.keys(this.plainPlacedValue).length;
+
       // SQL 조건문 생성
-      terms.push(`${this.toSnakecase(prop)}=:${prop}`);
+      terms.push(`${this.toSnakecase(prop)}=:${placeholder}`);
 
       // SQL 조건문에 포함된 placeholder 를 대치할 값 저장
-      this.plainPlacedValue[prop] = value;
+      this.plainPlacedValue[placeholder] = value;
     }
 
     return terms.join(` ${operator} `);

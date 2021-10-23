@@ -40,9 +40,7 @@ describe('repo > entity-write-sql.test', () => {
 
   it('별도 지정한 where 조건 반환', async () => {
     const entitySql = new EntityWriteSql(entity);
-    expect(entitySql.whereEqual(TestEntity.partial({ testEntityId: '1' }))).to.be.eq('test_entity_id=:testEntityId');
-    console.log(entitySql.placedValues());
-    console.log(entitySql.updateProps());
+    expect(entitySql.whereEqual(TestEntity.partial({ testEntityId: '1' }))).to.be.eq('test_entity_id=:testEntityId_3');
   });
 
   it('entity 의 키/값 쌍 추출', async () => {
