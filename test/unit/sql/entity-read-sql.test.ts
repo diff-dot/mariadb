@@ -50,7 +50,7 @@ describe('repo > entity-read-sql.test', () => {
     expect(entitySql.order({ testEntityId: 'ASC', data: 'DESC' })).to.be.eq('T1.test_entity_id ASC,T1.data DESC');
   });
 
-  it('지정된 값과 정확하기 일치하는 행을 찾기위한 where 쿼리 반환', () => {
+  it('지정된 값과 일치하는 행을 찾기위한 where 쿼리 반환', () => {
     const entitySql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
     expect(entitySql.whereEqual(TestEntity.partial({ carmelCaseField: '1' }))).to.be.eq('T1.carmel_case_field=:T1_carmelCaseField');
     expect(entitySql.placedValues()).to.be.eql({ T1_carmelCaseField: '1' });
