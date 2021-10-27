@@ -10,7 +10,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   private readonly entityClass: T;
   public readonly entityOption: MariadbEntityDescriptor;
   private readonly tableAlias?: string;
-  private readonly plainPlacedValue: Record<string, unknown>;
+  private readonly placedValueMap: Record<string, unknown>;
 
   constructor(entityClass: T, options: { tableAlias?: string } = {}) {
     const { tableAlias } = options;
@@ -20,7 +20,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     this.entityClass = entityClass;
     this.entityOption = getMariadbEntityOptions(entityClass);
     this.tableAlias = tableAlias;
-    this.plainPlacedValue = {};
+    this.placedValueMap = {};
   }
 
   /**
@@ -69,13 +69,13 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
 
     const terms: string[] = [];
     for (const [prop, value] of Object.entries(plainWhere)) {
-      const placeholder = this.placeholderName(prop) + '_' + Object.keys(this.plainPlacedValue).length;
+      const placeholder = this.placeholder(prop) + '_' + Object.keys(this.placedValueMap).length;
 
       // SQL 조건문 생성
       terms.push(`${this.column(prop as K)}=:${placeholder}`);
 
       // SQL 조건문에 포함된 placeholder 를 대치할 값 저장
-      this.plainPlacedValue[placeholder] = value;
+      this.placedValueMap[placeholder] = value;
     }
 
     return terms.join(` ${operator} `);
@@ -90,10 +90,10 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
   }
 
   public placedValues(): Record<string, unknown> {
-    return this.plainPlacedValue;
+    return this.placedValueMap;
   }
 
-  private placeholderName(prop: string) {
+  private placeholder(prop: string) {
     return this.tableAlias ? this.tableAlias + '_' + prop : prop;
   }
 

@@ -13,13 +13,16 @@ import { SqlWhereOperator } from '../type/SqlWhereOperator';
 export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntitySql {
   private readonly entity: T;
   public readonly entityOption: MariadbEntityDescriptor;
-  private readonly plainPlacedValue: Record<string, unknown>;
+  private readonly placedValueMap: Record<string, unknown>;
   private readonly entityIdProps: Map<string, EntityIdOptions> | undefined; // entity id 정보
   private readonly propNames: string[]; // 값이 있는 모든 property 이름 목록
-  private readonly fieldIndex: Map<string, string>; // property 이름으로 으로 field 이름을 찾을 떄 사용할 인덱스
-  private readonly propNameIndex: Map<string, string>; // field 이름으로 property 이름을 찾을 때 사용할 인덱스
+  private readonly columnIndex: Map<string, string>; // property 이름으로 으로 column 이름을 찾을 떄 사용할 인덱스
+  private readonly propIndex: Map<string, string>; // column 이름으로 property 이름을 찾을 때 사용할 인덱스
+  private readonly placeholderPrefix?: string; // placeholder 이름에 적용할 prefix
 
-  constructor(entity: T) {
+  constructor(entity: T, options: { placeholderPrefix?: string } = {}) {
+    const { placeholderPrefix } = options;
+
     super();
 
     if (!(entity instanceof Entity)) throw new Error('ENTITY must be entity instance.');
@@ -27,25 +30,28 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
     this.entity = entity;
     this.entityOption = getMariadbEntityOptions(entity);
 
+    this.placeholderPrefix = placeholderPrefix;
+
     // entityId 정보 추출
     this.entityIdProps = getEntityIdProps(entity);
 
     // 저장가능한 형태로 변환하고 값이 지정되지 않은 property 삭제
-    this.plainPlacedValue = classToPlain(entity, { exposeUnsetFields: false });
+    const plainValue = classToPlain(entity, { exposeUnsetFields: false });
 
     // property 목록 추출 및 필드명 인덱스 구축
     this.propNames = [];
-    this.fieldIndex = new Map();
-    this.propNameIndex = new Map();
-    for (const propName of Object.keys(this.plainPlacedValue)) {
-      if (this.plainPlacedValue[propName] === undefined) continue;
+    this.columnIndex = new Map();
+    this.propIndex = new Map();
+    this.placedValueMap = {};
+    for (const propName of Object.keys(plainValue)) {
+      this.placedValueMap[this.placeholder(propName)] = plainValue[propName];
 
       // 값이 있는 props 의 키 목록 추출
       this.propNames.push(propName);
 
       // 인덱스 구축
-      this.fieldIndex.set(propName, this.toSnakecase(propName));
-      this.propNameIndex.set(this.toSnakecase(propName), propName);
+      this.columnIndex.set(propName, this.toSnakecase(propName));
+      this.propIndex.set(this.toSnakecase(propName), propName);
     }
 
     if (!this.propNames.length) throw new Error('Entity converted to a plain object is empty.');
@@ -69,25 +75,25 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
    * 예시 : column1, column2, column3, ...
    */
   public columns(): string {
-    return `${this.propNames.map(p => this.fieldIndex.get(p)).join(',')}`;
+    return `${this.propNames.map(p => this.columnIndex.get(p)).join(',')}`;
   }
 
   /**
    * insert sql에 사용할 값 이름 목록 생성
    * 예시 :column1, :column2
    */
-  public props(): string {
-    return `${this.propNames.map(p => ':' + p).join(',')}`;
+  public insertColumns(): string {
+    return `${this.propNames.map(p => ':' + this.placeholder(p)).join(',')}`;
   }
 
   /**
    * entityId 를 제외한 값 property 의 업데이트 SQL 조건
    * 예시 : value=:value,  value2=:value2
    */
-  public updateProps(): string {
+  public updateColumns(): string {
     return this.propNames
       .filter(p => !this.idPropNames.includes(p))
-      .map(p => `${this.fieldIndex.get(p)}=:${p}`)
+      .map(p => `${this.columnIndex.get(p)}=:${this.placeholder(p)}`)
       .join(',');
   }
 
@@ -98,11 +104,11 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
   public whereById(): string {
     // entityId 의 값이 있는지 확인
     for (const propName of this.idPropNames) {
-      if (!this.plainPlacedValue[propName]) {
+      if (!this.placedValueMap[this.placeholder(propName)]) {
         throw new Error(`EntityId(${propName}) not defined to plained ${this.entity.constructor.name}`);
       }
     }
-    return this.idPropNames.map(p => `${this.toSnakecase(p)}=:${p}`).join(' AND ');
+    return this.idPropNames.map(p => `${this.toSnakecase(p)}=:${this.placeholder(p)}`).join(' AND ');
   }
 
   public whereEqual(where: Partial<T>, options: { operator?: SqlWhereOperator } = {}): string {
@@ -113,13 +119,13 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
 
     const terms: string[] = [];
     for (const [prop, value] of Object.entries(plainWhere)) {
-      const placeholder = prop + '_' + Object.keys(this.plainPlacedValue).length;
+      const placeholder = this.placeholder(prop) + '_' + Object.keys(this.placedValueMap).length;
 
       // SQL 조건문 생성
       terms.push(`${this.toSnakecase(prop)}=:${placeholder}`);
 
       // SQL 조건문에 포함된 placeholder 를 대치할 값 저장
-      this.plainPlacedValue[placeholder] = value;
+      this.placedValueMap[placeholder] = value;
     }
 
     return terms.join(` ${operator} `);
@@ -130,7 +136,11 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
    * @returns
    */
   public placedValues(): Record<string, unknown> {
-    return this.plainPlacedValue;
+    return this.placedValueMap;
+  }
+
+  private placeholder(prop: string) {
+    return this.placeholderPrefix ? this.placeholderPrefix + '_' + prop : prop;
   }
 
   public get tablePath(): string {

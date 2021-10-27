@@ -124,7 +124,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connection.query(
-        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.props()})`,
+        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.insertColumns()})`,
         entitySql.placedValues()
       );
       return res;
@@ -135,23 +135,38 @@ export abstract class MariadbRepository extends Repository {
 
   /**
    * EntityId 를 기준으로 update / insert
-   * @param entity
+   *
+   * @param args.entity
+   * @param args.updateEntity 업데이트 수행시 변경할 데이터를 별도 지정하길 희망할 경우, 미지정시 entity 에 정의된 모든 데이터 반영
    * @param options
    * @returns
    */
-  protected async upsertEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
-    const entitySql = new EntityWriteSql(entity);
+
+  protected async upsertEntity(args: { entity: Entity; updateEntity?: Entity; connection?: PoolConnection }): Promise<WriteResult> {
+    const { entity, updateEntity } = args;
 
     let localConnection: PoolConnection | undefined = undefined;
-    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
+    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
 
     try {
-      const res = await connection.query(
-        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.props()})
-        ON DUPLICATE KEY UPDATE ${entitySql.updateProps()}`,
-        entitySql.placedValues()
-      );
-      return res;
+      const entitySql = new EntityWriteSql(entity);
+      if (updateEntity) {
+        // insert 할 데이터와 update 할 데이터가 별도 지정된 경우
+        const updateEntitySql = new EntityWriteSql(updateEntity, { placeholderPrefix: 'update_' });
+        const res = await connection.query(
+          `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.insertColumns()})
+          ON DUPLICATE KEY UPDATE ${updateEntitySql.updateColumns()}`,
+          { ...entitySql.placedValues(), ...updateEntitySql.placedValues() }
+        );
+        return res;
+      } else {
+        const res = await connection.query(
+          `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.insertColumns()})
+          ON DUPLICATE KEY UPDATE ${entitySql.updateColumns()}`,
+          entitySql.placedValues()
+        );
+        return res;
+      }
     } finally {
       if (localConnection) await connection.release();
     }
@@ -165,7 +180,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connection.query(
-        `UPDATE ${entitySql.tablePath} SET ${entitySql.updateProps()} WHERE ${entitySql.whereById()}`,
+        `UPDATE ${entitySql.tablePath} SET ${entitySql.updateColumns()} WHERE ${entitySql.whereById()}`,
         entitySql.placedValues()
       );
       return res;
@@ -187,7 +202,7 @@ export abstract class MariadbRepository extends Repository {
     try {
       const res = await connection.query(
         `UPDATE ${entitySql.tablePath}
-        SET ${entitySql.updateProps()}
+        SET ${entitySql.updateColumns()}
         WHERE ${entitySql.whereEqual(where)}`,
         entitySql.placedValues()
       );

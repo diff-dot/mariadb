@@ -8,7 +8,7 @@ import { hostOptions } from './env/host';
 import { PoolConnection } from 'mariadb';
 import { EntityReadSql } from '../../src/sql';
 
-@MariadbEntity({ db: 'test', table: 'single_pk_test' })
+@MariadbEntity({ db: 'test', table: 'mariadb_module_single_pk_test' })
 class SinglePkEntity extends Entity {
   @EntityId()
   @Expose()
@@ -24,7 +24,7 @@ class SinglePkEntity extends Entity {
   carmelCaseField: number | null;
 }
 
-@MariadbEntity({ db: 'test', table: 'auto_inc_pk' })
+@MariadbEntity({ db: 'test', table: 'mariadb_module_auto_inc_pk' })
 class AutoIncPkEntity extends Entity {
   @EntityId()
   @Expose()
@@ -44,9 +44,9 @@ class SinglePkRepo extends MariadbRepository {
     return res.affectedRows === 1;
   }
 
-  async upsertTestEntity(entity: SinglePkEntity): Promise<boolean> {
-    const res = await this.upsertEntity(entity);
-    return res.affectedRows === 1;
+  async upsertTestEntity(entity: SinglePkEntity, updateEntity?: Partial<SinglePkEntity>): Promise<number> {
+    const res = await this.upsertEntity({ entity, updateEntity });
+    return res.affectedRows;
   }
 
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
@@ -144,25 +144,22 @@ class AutoIncPkRepo extends MariadbRepository {
 }
 
 const singlePkRepo = new SinglePkRepo();
+const autoIncPkRepo = new AutoIncPkRepo();
+
 const singlePkEntity = new SinglePkEntity();
 singlePkEntity.testEntityId = 'w';
 singlePkEntity.data = 'data';
 singlePkEntity.idx = 1;
 singlePkEntity.carmelCaseField = 10;
 
-const autoIncPkRepo = new AutoIncPkRepo();
-const autoIncPkEntity = AutoIncPkEntity.create({
-  data: 1
-});
-
 describe('repo > mariadb-repository.test', () => {
-  after(async () => {
+  before(async () => {
     const conn = await MariadbClient.instance(hostOptions).connection();
     try {
-      await conn.query('DELETE FROM test.single_pk_test WHERE test_entity_id=:test_entity_id', {
+      await conn.query('TRUNCATE test.mariadb_module_single_pk_test', {
         test_entity_id: singlePkEntity.testEntityId
       });
-      await conn.query('TRUNCATE test.auto_inc_pk');
+      await conn.query('TRUNCATE test.mariadb_module_auto_inc_pk');
     } catch (e) {
       console.log(e);
     } finally {
@@ -224,16 +221,16 @@ describe('repo > mariadb-repository.test', () => {
 
   it('Entity upsert', async () => {
     const testEntity = SinglePkEntity.create({
-      testEntityId: 'upsertId',
+      testEntityId: 'upsertTestEntity',
       idx: 10,
       data: null,
       carmelCaseField: null
     });
-    const res = await singlePkRepo.upsertTestEntity(testEntity);
-    expect(res).to.be.true;
+    const updatedRows1 = await singlePkRepo.upsertTestEntity(testEntity);
+    expect(updatedRows1).to.be.gte(1);
 
-    const res2 = await singlePkRepo.upsertTestEntity(testEntity);
-    expect(res2).to.be.true;
+    const updatedRows2 = await singlePkRepo.upsertTestEntity(testEntity, SinglePkEntity.partial({ data: 'w1' }));
+    expect(updatedRows2).to.be.gte(1);
   });
 
   it('Entity 일괄 삭제', async () => {
@@ -251,6 +248,9 @@ describe('repo > mariadb-repository.test', () => {
   });
 
   it('Auto Increment PK 를 사용하는 Entity 추가', async () => {
+    const autoIncPkEntity = AutoIncPkEntity.create({
+      data: 1
+    });
     const res = await autoIncPkRepo.addTestEntity(autoIncPkEntity);
     expect(res).to.be.eq(1);
   });
