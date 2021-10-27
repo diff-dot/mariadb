@@ -92,9 +92,20 @@ class SinglePkRepo extends MariadbRepository {
     return res.affectedRows === 1;
   }
 
+  async updateTestEntities<T extends SinglePkEntity>(args: { set: Partial<T>; where: Partial<T> }): Promise<number> {
+    const { set, where } = args;
+    const res = await this.updateEntities(set, where);
+    return res.affectedRows;
+  }
+
   async deleteTestEntity(testEntityId: string): Promise<boolean> {
     const res = await this.deleteEntity(SinglePkEntity.partial({ testEntityId }));
     return res.affectedRows === 1;
+  }
+
+  async deleteTestEntities<T extends SinglePkEntity>(where: Partial<T>): Promise<number> {
+    const res = await this.deleteEntities(where);
+    return res.affectedRows;
   }
 }
 
@@ -181,8 +192,17 @@ describe('repo > mariadb-repository.test', () => {
     expect(res).to.be.true;
   });
 
+  it('Entity 일괄 업데이트', async () => {
+    singlePkEntity.data = 'updated data2';
+    const res = await singlePkRepo.updateTestEntities({
+      set: SinglePkEntity.partial({ data: 'updated2' }),
+      where: SinglePkEntity.partial({ testEntityId: 'w' })
+    });
+    expect(res).to.be.eq(1);
+  });
+
   it('Entity 개수 조회', async () => {
-    const res = await singlePkRepo.testEntityCount('updated data');
+    const res = await singlePkRepo.testEntityCount('updated2');
     expect(res).to.be.eq(1);
   });
 
@@ -195,6 +215,20 @@ describe('repo > mariadb-repository.test', () => {
   it('Entity 삭제', async () => {
     const res = await singlePkRepo.deleteTestEntity(singlePkEntity.testEntityId);
     expect(res).to.be.true;
+  });
+
+  it('Entity 일괄 삭제', async () => {
+    // 테스트를 위해 entity 추가
+    const testEntity = SinglePkEntity.create({
+      testEntityId: 'delTestId',
+      idx: 1,
+      data: null,
+      carmelCaseField: null
+    });
+    await singlePkRepo.addTestEntity(testEntity);
+
+    const deleteRes = await singlePkRepo.deleteTestEntities(SinglePkEntity.partial({ idx: testEntity.idx }));
+    expect(deleteRes).to.be.eq(1);
   });
 
   it('Auto Increment PK 를 사용하는 Entity 추가', async () => {

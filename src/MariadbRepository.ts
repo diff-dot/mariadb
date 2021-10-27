@@ -32,12 +32,13 @@ export abstract class MariadbRepository extends Repository {
     lock?: RowLevelLockMode;
   }): Promise<Pick<T, K> | undefined> {
     const { entityClass, where, operator = 'AND', props, lock } = args;
-
     const entitySql = new EntityReadSql(entityClass);
-    const connections = args.connection || (await this.client.connection());
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
 
     try {
-      const res = await connections.query(
+      const res = await connection.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(where, { operator })} LIMIT 1 ${
           lock ? entitySql.rowLevelLock(lock) : ''
         }`,
@@ -47,7 +48,7 @@ export abstract class MariadbRepository extends Repository {
       if (!res.length) return undefined;
       return plainToClass(entityClass, res[0] as Record<string, unknown>, { exposeUnsetFields: false });
     } finally {
-      if (!args.connection) await connections.release();
+      if (localConnection) await localConnection.release();
     }
   }
 
@@ -63,12 +64,13 @@ export abstract class MariadbRepository extends Repository {
     lock?: RowLevelLockMode;
   }): Promise<Pick<T, K>[]> {
     const { entityClass, where, operator = 'AND', props, order, offset = 0, size, lock } = args;
-
     const entitySql = new EntityReadSql(entityClass);
 
-    const connections = args.connection || (await this.client.connection());
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
+
     try {
-      const res = await connections.query(
+      const res = await connection.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath}
         ${where ? 'WHERE ' + entitySql.whereEqual(where, { operator }) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
@@ -84,7 +86,7 @@ export abstract class MariadbRepository extends Repository {
 
       return entities;
     } finally {
-      if (!args.connection) await connections.release();
+      if (localConnection) await localConnection.release();
     }
   }
 
@@ -96,12 +98,13 @@ export abstract class MariadbRepository extends Repository {
     lock?: RowLevelLockMode;
   }): Promise<number> {
     const { entityClass, where, operator = 'AND', lock } = args;
-
     const entitySql = new EntityReadSql(entityClass);
-    const connections = args.connection || (await this.client.connection());
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
 
     try {
-      const res = await connections.query(
+      const res = await connection.query(
         `SELECT COUNT(*) AS count FROM ${entitySql.tablePath}
         WHERE ${entitySql.whereEqual(where, { operator })}
         ${lock ? entitySql.rowLevelLock(lock) : ''}`,
@@ -109,13 +112,15 @@ export abstract class MariadbRepository extends Repository {
       );
       return res[0].count;
     } finally {
-      if (!args.connection) await connections.release();
+      if (localConnection) await localConnection.release();
     }
   }
 
   protected async addEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
-    const connection = options.connection || (await this.client.connection());
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
       const res = await connection.query(
@@ -124,34 +129,79 @@ export abstract class MariadbRepository extends Repository {
       );
       return res;
     } finally {
-      if (!options.connection) await connection.release();
+      if (localConnection) await connection.release();
     }
   }
 
   protected async updateEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
-    const selectedConn = options.connection || (await this.client.connection());
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
-      const res = await selectedConn.query(
+      const res = await connection.query(
         `UPDATE ${entitySql.tablePath} SET ${entitySql.updateProps()} WHERE ${entitySql.whereById()}`,
         entitySql.placedValues()
       );
       return res;
     } finally {
-      if (!options.connection) await selectedConn.release();
+      if (localConnection) await localConnection.release();
+    }
+  }
+
+  protected async updateEntities<T extends Entity>(
+    set: Partial<T>,
+    where: Partial<T>,
+    options: { connection?: PoolConnection } = {}
+  ): Promise<WriteResult> {
+    const entitySql = new EntityWriteSql(set);
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
+
+    try {
+      const res = await connection.query(
+        `UPDATE ${entitySql.tablePath}
+        SET ${entitySql.updateProps()}
+        WHERE ${entitySql.whereEqual(where)}`,
+        entitySql.placedValues()
+      );
+      return res;
+    } finally {
+      if (localConnection) await localConnection.release();
     }
   }
 
   protected async deleteEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
-    const selectedConn = options.connection || (await this.client.connection());
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
-      const res = await selectedConn.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.placedValues());
+      const res = await connection.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.placedValues());
       return res;
     } finally {
-      if (!options.connection) await selectedConn.release();
+      if (localConnection) await localConnection.release();
+    }
+  }
+
+  protected async deleteEntities<T extends Entity>(where: Partial<T>, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
+    const entitySql = new EntityWriteSql(where);
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
+
+    try {
+      const res = await connection.query(
+        `DELETE FROM ${entitySql.tablePath}
+        WHERE ${entitySql.whereEqual(where)}`,
+        entitySql.placedValues()
+      );
+      return res;
+    } finally {
+      if (localConnection) await localConnection.release();
     }
   }
 
