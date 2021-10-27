@@ -44,6 +44,11 @@ class SinglePkRepo extends MariadbRepository {
     return res.affectedRows === 1;
   }
 
+  async upsertTestEntity(entity: SinglePkEntity): Promise<boolean> {
+    const res = await this.upsertEntity(entity);
+    return res.affectedRows === 1;
+  }
+
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
     return this.entity({
       entityClass: SinglePkEntity,
@@ -215,6 +220,20 @@ describe('repo > mariadb-repository.test', () => {
   it('Entity 삭제', async () => {
     const res = await singlePkRepo.deleteTestEntity(singlePkEntity.testEntityId);
     expect(res).to.be.true;
+  });
+
+  it('Entity upsert', async () => {
+    const testEntity = SinglePkEntity.create({
+      testEntityId: 'upsertId',
+      idx: 10,
+      data: null,
+      carmelCaseField: null
+    });
+    const res = await singlePkRepo.upsertTestEntity(testEntity);
+    expect(res).to.be.true;
+
+    const res2 = await singlePkRepo.upsertTestEntity(testEntity);
+    expect(res2).to.be.true;
   });
 
   it('Entity 일괄 삭제', async () => {

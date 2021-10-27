@@ -133,6 +133,30 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
+  /**
+   * EntityId 를 기준으로 update / insert
+   * @param entity
+   * @param options
+   * @returns
+   */
+  protected async upsertEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
+    const entitySql = new EntityWriteSql(entity);
+
+    let localConnection: PoolConnection | undefined = undefined;
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
+
+    try {
+      const res = await connection.query(
+        `INSERT INTO ${entitySql.tablePath}(${entitySql.columns()}) VALUES(${entitySql.props()})
+        ON DUPLICATE KEY UPDATE ${entitySql.updateProps()}`,
+        entitySql.placedValues()
+      );
+      return res;
+    } finally {
+      if (localConnection) await connection.release();
+    }
+  }
+
   protected async updateEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
 
