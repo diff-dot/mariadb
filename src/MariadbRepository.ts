@@ -90,9 +90,9 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async count<T extends Entity, K extends keyof T>(args: {
-    entityClass: { new (...args: unknown[]): T };
-    where: Partial<T>;
+  protected async count(args: {
+    entityClass: { new (...args: unknown[]): Entity };
+    where: Entity;
     operator?: SqlWhereOperator;
     connection?: PoolConnection;
     lock?: RowLevelLockMode;
@@ -189,11 +189,7 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async updateEntities<T extends Entity>(
-    set: Partial<T>,
-    where: Partial<T>,
-    options: { connection?: PoolConnection } = {}
-  ): Promise<WriteResult> {
+  protected async updateEntities(set: Entity, where: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(set);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -226,7 +222,7 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async deleteEntities<T extends Entity>(where: Partial<T>, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
+  protected async deleteEntities(where: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(where);
 
     let localConnection: PoolConnection | undefined = undefined;
