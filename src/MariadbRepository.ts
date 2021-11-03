@@ -23,51 +23,56 @@ export abstract class MariadbRepository extends Repository {
 
   protected abstract defaultHost(): MariadbHostOptions;
 
-  protected async entity<T extends Entity, K extends keyof T>(args: {
-    entityClass: { new (...args: unknown[]): T };
-    where: Partial<T>;
-    operator?: SqlWhereOperator;
-    props: K[];
-    connection?: PoolConnection;
-    lock?: RowLevelLockMode;
-  }): Promise<Pick<T, K> | undefined> {
-    const { entityClass, where, operator = 'AND', props, lock } = args;
-    const entitySql = new EntityReadSql(entityClass);
+  protected async entity<T extends Entity, K extends keyof T>(
+    entityConstructor: { new (...args: unknown[]): T },
+    props: K[],
+    options: {
+      where?: Partial<T>;
+      operator?: SqlWhereOperator;
+      connection?: PoolConnection;
+      lock?: RowLevelLockMode;
+    }
+  ): Promise<Pick<T, K> | undefined> {
+    const { where, operator = 'AND', lock } = options;
+    const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
-    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
       const res = await connection.query(
-        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(where, { operator })} LIMIT 1 ${
-          lock ? entitySql.rowLevelLock(lock) : ''
-        }`,
+        `SELECT ${entitySql.select(props)}
+        FROM ${entitySql.tablePath}
+        ${where ? `WHERE ${entitySql.whereEqual(where, { operator })}` : ''}
+        LIMIT 1 ${lock ? entitySql.rowLevelLock(lock) : ''}`,
         entitySql.placedValues()
       );
 
       if (!res.length) return undefined;
-      return plainToClass(entityClass, res[0] as Record<string, unknown>, { exposeUnsetFields: false });
+      return plainToClass(entityConstructor, res[0] as Record<string, unknown>, { exposeUnsetFields: false });
     } finally {
       if (localConnection) await localConnection.release();
     }
   }
 
-  protected async entities<T extends Entity, K extends keyof T>(args: {
-    entityClass: { new (...args: unknown[]): T };
-    where?: Partial<T>;
-    operator?: SqlWhereOperator;
-    props: K[];
-    order?: OrderByProp<T>;
-    offset?: number;
-    size?: number;
-    connection?: PoolConnection;
-    lock?: RowLevelLockMode;
-  }): Promise<Pick<T, K>[]> {
-    const { entityClass, where, operator = 'AND', props, order, offset = 0, size, lock } = args;
-    const entitySql = new EntityReadSql(entityClass);
+  protected async entities<T extends Entity, K extends keyof T>(
+    entityConstructor: { new (...args: unknown[]): T },
+    props: K[],
+    options: {
+      where?: Partial<T>;
+      operator?: SqlWhereOperator;
+      order?: OrderByProp<T>;
+      offset?: number;
+      size?: number;
+      connection?: PoolConnection;
+      lock?: RowLevelLockMode;
+    }
+  ): Promise<Pick<T, K>[]> {
+    const { where, operator = 'AND', order, offset = 0, size, lock } = options;
+    const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
-    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
       const res = await connection.query(
@@ -81,7 +86,7 @@ export abstract class MariadbRepository extends Repository {
 
       const entities: Pick<T, K>[] = [];
       for (const row of res) {
-        entities.push(plainToClass(entityClass, row, { exposeUnsetFields: false }));
+        entities.push(plainToClass(entityConstructor, row, { exposeUnsetFields: false }));
       }
 
       return entities;
@@ -90,15 +95,17 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async count(args: {
-    entityClass: { new (...args: unknown[]): Entity };
-    where: Entity;
-    operator?: SqlWhereOperator;
-    connection?: PoolConnection;
-    lock?: RowLevelLockMode;
-  }): Promise<number> {
-    const { entityClass, where, operator = 'AND', lock } = args;
-    const entitySql = new EntityReadSql(entityClass);
+  protected async count(
+    entityConstructor: { new (...args: unknown[]): Entity },
+    args: {
+      where?: Entity;
+      operator?: SqlWhereOperator;
+      connection?: PoolConnection;
+      lock?: RowLevelLockMode;
+    }
+  ): Promise<number> {
+    const { where, operator = 'AND', lock } = args;
+    const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
     const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
@@ -106,7 +113,7 @@ export abstract class MariadbRepository extends Repository {
     try {
       const res = await connection.query(
         `SELECT COUNT(*) AS count FROM ${entitySql.tablePath}
-        WHERE ${entitySql.whereEqual(where, { operator })}
+        ${where ? `WHERE ${entitySql.whereEqual(where, { operator })}` : ''}
         ${lock ? entitySql.rowLevelLock(lock) : ''}`,
         entitySql.placedValues()
       );
@@ -142,11 +149,11 @@ export abstract class MariadbRepository extends Repository {
    * @returns
    */
 
-  protected async upsertEntity(args: { entity: Entity; updateEntity?: Entity; connection?: PoolConnection }): Promise<WriteResult> {
-    const { entity, updateEntity } = args;
+  protected async upsertEntity(entity: Entity, options: { updateEntity?: Entity; connection?: PoolConnection }): Promise<WriteResult> {
+    const { updateEntity } = options;
 
     let localConnection: PoolConnection | undefined = undefined;
-    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
       const entitySql = new EntityWriteSql(entity);

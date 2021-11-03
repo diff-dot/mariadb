@@ -13,6 +13,11 @@ class TestEntity extends Entity {
   @Transform(JsonTransformer(TestVo))
   @Type(() => TestVo)
   data: TestVo;
+
+  @Expose()
+  @Transform(JsonTransformer())
+  @Type(() => TestVo)
+  data2: Record<string, unknown>;
 }
 
 describe('transformer > json-transformer.test', () => {
@@ -21,10 +26,13 @@ describe('transformer > json-transformer.test', () => {
     entity.data = new TestVo();
     entity.data.nestedId = '1';
 
+    entity.data2 = { nestedId: '1' };
+
     const plain = classToPlain(entity, { exposeUnsetFields: false });
     expect(plain.data).to.be.eq('{"nestedId":"1"}');
 
     const unplain = plainToClass(TestEntity, plain);
     expect(unplain.data.nestedId).to.be.eq('1');
+    expect(unplain.data2.nestedId).to.be.eq('1');
   });
 });

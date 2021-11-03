@@ -45,23 +45,19 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async upsertTestEntity(entity: SinglePkEntity, updateEntity?: Partial<SinglePkEntity>): Promise<number> {
-    const res = await this.upsertEntity({ entity, updateEntity });
+    const res = await this.upsertEntity(entity, { updateEntity });
     return res.affectedRows;
   }
 
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
-    return this.entity({
-      entityClass: SinglePkEntity,
+    return this.entity(SinglePkEntity, props, {
       where: SinglePkEntity.partial({ testEntityId }),
-      operator: 'AND',
-      props
+      operator: 'AND'
     });
   }
 
   async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
-    return this.entities({
-      entityClass: SinglePkEntity,
-      props,
+    return this.entities(SinglePkEntity, props, {
       where: SinglePkEntity.partial({ idx: index }),
       order: { idx: 'DESC' },
       size: 10
@@ -69,7 +65,7 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async testEntityCount(data: string): Promise<number> {
-    const res = this.count({ entityClass: SinglePkEntity, where: SinglePkEntity.partial({ data }) });
+    const res = this.count(SinglePkEntity, { where: SinglePkEntity.partial({ data }) });
     return res;
   }
 
@@ -125,9 +121,7 @@ class AutoIncPkRepo extends MariadbRepository {
   }
 
   async testEntity<K extends keyof AutoIncPkEntity>(id: number, props: K[]): Promise<Pick<AutoIncPkEntity, K> | undefined> {
-    return this.entity({
-      entityClass: AutoIncPkEntity,
-      props,
+    return this.entity(AutoIncPkEntity, props, {
       where: AutoIncPkEntity.partial({ id })
     });
   }
