@@ -6,7 +6,7 @@ import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { OrderByProp } from './type/OrderByProp';
 import { RowLevelLockMode } from './type/RowLevelLockMode';
-import { SqlWhereOperator } from './type/SqlWhereOperator';
+import { SqlComparisonExprGroup } from './type/SqlComparisonExprGroup';
 import { WriteResult } from './type/WriteResult';
 
 /**
@@ -27,13 +27,12 @@ export abstract class MariadbRepository extends Repository {
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
     options: {
-      where?: Partial<T>;
-      operator?: SqlWhereOperator;
+      where?: SqlComparisonExprGroup<keyof T>;
       connection?: PoolConnection;
       lock?: RowLevelLockMode;
     }
   ): Promise<Pick<T, K> | undefined> {
-    const { where, operator = 'AND', lock } = options;
+    const { where, lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -43,7 +42,7 @@ export abstract class MariadbRepository extends Repository {
       const res = await connection.query(
         `SELECT ${entitySql.select(props)}
         FROM ${entitySql.tablePath}
-        ${where ? `WHERE ${entitySql.whereEqual(where, { operator })}` : ''}
+        ${where ? `WHERE ${entitySql.where(where)}` : ''}
         LIMIT 1 ${lock ? entitySql.rowLevelLock(lock) : ''}`,
         entitySql.placedValues()
       );
@@ -59,8 +58,7 @@ export abstract class MariadbRepository extends Repository {
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
     options: {
-      where?: Partial<T>;
-      operator?: SqlWhereOperator;
+      where?: SqlComparisonExprGroup<keyof T>;
       order?: OrderByProp<T>;
       offset?: number;
       size?: number;
@@ -68,7 +66,7 @@ export abstract class MariadbRepository extends Repository {
       lock?: RowLevelLockMode;
     }
   ): Promise<Pick<T, K>[]> {
-    const { where, operator = 'AND', order, offset = 0, size, lock } = options;
+    const { where, order, offset = 0, size, lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -77,7 +75,7 @@ export abstract class MariadbRepository extends Repository {
     try {
       const res = await connection.query(
         `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath}
-        ${where ? 'WHERE ' + entitySql.whereEqual(where, { operator }) : ''}
+        ${where ? 'WHERE ' + entitySql.where(where) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}
         ${lock ? entitySql.rowLevelLock(lock) : ''}`,
@@ -95,16 +93,15 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async count(
-    entityConstructor: { new (...args: unknown[]): Entity },
+  protected async count<T extends Entity>(
+    entityConstructor: { new (...args: unknown[]): T },
     args: {
-      where?: Entity;
-      operator?: SqlWhereOperator;
+      where?: SqlComparisonExprGroup<keyof T>;
       connection?: PoolConnection;
       lock?: RowLevelLockMode;
     }
   ): Promise<number> {
-    const { where, operator = 'AND', lock } = args;
+    const { where, lock } = args;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -113,7 +110,7 @@ export abstract class MariadbRepository extends Repository {
     try {
       const res = await connection.query(
         `SELECT COUNT(*) AS count FROM ${entitySql.tablePath}
-        ${where ? `WHERE ${entitySql.whereEqual(where, { operator })}` : ''}
+        ${where ? `WHERE ${entitySql.where(where)}` : ''}
         ${lock ? entitySql.rowLevelLock(lock) : ''}`,
         entitySql.placedValues()
       );
@@ -148,7 +145,6 @@ export abstract class MariadbRepository extends Repository {
    * @param options
    * @returns
    */
-
   protected async upsertEntity(entity: Entity, options: { updateEntity?: Entity; connection?: PoolConnection }): Promise<WriteResult> {
     const { updateEntity } = options;
 

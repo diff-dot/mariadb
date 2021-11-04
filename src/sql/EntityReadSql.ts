@@ -3,7 +3,8 @@ import { classToPlain } from 'class-transformer';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
 import { RowLevelLockMode } from '../type/RowLevelLockMode';
-import { SqlWhereOperator } from '../type/SqlWhereOperator';
+import { isSqlComparisonExprGroup, SqlComparisonExprGroup } from '../type/SqlComparisonExprGroup';
+import { SqlComparisonOperator } from '../type/SqlComparisonOperator';
 import { EntitySql } from './EntitySql';
 
 export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>> extends EntitySql {
@@ -61,24 +62,67 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     return `${args.offset || 0},${args.size}`;
   }
 
-  public whereEqual(where: Partial<InstanceType<T>>, options: { operator?: SqlWhereOperator } = {}): string {
-    const { operator = 'AND' } = options;
-
-    if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
-    const plainWhere = classToPlain(where, { exposeUnsetFields: false });
-
+  public where(where: SqlComparisonExprGroup<K>): string {
     const terms: string[] = [];
-    for (const [prop, value] of Object.entries(plainWhere)) {
-      const placeholder = this.placeholder(prop) + '_' + Object.keys(this.placedValueMap).length;
-
-      // SQL 조건문 생성
-      terms.push(`${this.column(prop as K)}=:${placeholder}`);
-
-      // SQL 조건문에 포함된 placeholder 를 대치할 값 저장
-      this.placedValueMap[placeholder] = value;
+    for (const exp of where.exprs) {
+      if (isSqlComparisonExprGroup(exp)) {
+        terms.push(` (${this.where(exp)}) `);
+      } else {
+        terms.push(this.comparison(exp.prop, exp.op || '=', exp.value));
+      }
     }
 
-    return terms.join(` ${operator} `);
+    return terms.join(` ${where.op || 'AND'} `);
+  }
+
+  /**
+   * DB 저장을 위해 serialize 한 값을 반환
+   *
+   * @param prop
+   * @param value
+   * @returns
+   */
+  public serializeValue(prop: K, value: unknown): unknown {
+    const entity = new this.entityClass();
+    Object.assign(entity, { [prop]: value });
+    const serializedEntity = classToPlain(entity, { exposeUnsetFields: false });
+    return serializedEntity[prop.toString()];
+  }
+
+  /**
+   * 비교 표현식 반환
+   */
+  public comparison(prop: K, op: SqlComparisonOperator, value: unknown): string {
+    const serializedValue = this.serializeValue(prop, value);
+
+    const placeholder = this.placeholder(prop.toString()) + '_' + Object.keys(this.placedValueMap).length;
+    this.placedValueMap[placeholder] = serializedValue;
+
+    return `${this.column(prop)}${op}:${placeholder}`;
+  }
+
+  public eq(prop: K, value: unknown): string {
+    return this.comparison(prop, '=', value);
+  }
+
+  public gt(prop: K, value: unknown): string {
+    return this.comparison(prop, '>', value);
+  }
+
+  public gte(prop: K, value: unknown): string {
+    return this.comparison(prop, '>=', value);
+  }
+
+  public lt(prop: K, value: unknown): string {
+    return this.comparison(prop, '<', value);
+  }
+
+  public lte(prop: K, value: unknown): string {
+    return this.comparison(prop, '<=', value);
+  }
+
+  public not(prop: K, value: unknown): string {
+    return this.comparison(prop, '<>', value);
   }
 
   public rowLevelLock(mode: RowLevelLockMode) {

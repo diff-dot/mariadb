@@ -51,21 +51,20 @@ class SinglePkRepo extends MariadbRepository {
 
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
     return this.entity(SinglePkEntity, props, {
-      where: SinglePkEntity.partial({ testEntityId }),
-      operator: 'AND'
+      where: { exprs: [{ prop: 'testEntityId', value: testEntityId }] }
     });
   }
 
   async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
     return this.entities(SinglePkEntity, props, {
-      where: SinglePkEntity.partial({ idx: index }),
+      where: { exprs: [{ prop: 'idx', value: index }] },
       order: { idx: 'DESC' },
       size: 10
     });
   }
 
   async testEntityCount(data: string): Promise<number> {
-    const res = this.count(SinglePkEntity, { where: SinglePkEntity.partial({ data }) });
+    const res = this.count(SinglePkEntity, { where: { exprs: [{ prop: 'data', value: data }] } });
     return res;
   }
 
@@ -76,7 +75,7 @@ class SinglePkRepo extends MariadbRepository {
     try {
       conn = await this.client.connection();
       const res = await conn.query(
-        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.whereEqual(SinglePkEntity.partial({ data }))}`,
+        `SELECT ${entitySql.select(props)} FROM ${entitySql.tablePath} WHERE ${entitySql.eq('data', data)}`,
         entitySql.placedValues()
       );
       if (!res.length) return undefined;
@@ -122,7 +121,7 @@ class AutoIncPkRepo extends MariadbRepository {
 
   async testEntity<K extends keyof AutoIncPkEntity>(id: number, props: K[]): Promise<Pick<AutoIncPkEntity, K> | undefined> {
     return this.entity(AutoIncPkEntity, props, {
-      where: AutoIncPkEntity.partial({ id })
+      where: { exprs: [{ prop: 'id', value: id }] }
     });
   }
 

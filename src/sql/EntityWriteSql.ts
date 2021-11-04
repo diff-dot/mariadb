@@ -2,7 +2,7 @@ import { classToPlain } from 'class-transformer';
 import { Entity, EntityIdOptions, getEntityIdProps } from '@diff./repository';
 import { EntitySql } from './EntitySql';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
-import { SqlWhereOperator } from '../type/SqlWhereOperator';
+import { SqlComparisonOperator } from '../type/SqlComparisonOperator';
 /**
  * Entity 의 insert 또는 update 에 사용할 SQL 쿼리 생성기
  *
@@ -111,7 +111,7 @@ export class EntityWriteSql<T extends Entity, K extends keyof T> extends EntityS
     return this.idPropNames.map(p => `${this.toSnakecase(p)}=:${this.placeholder(p)}`).join(' AND ');
   }
 
-  public whereEqual(where: Partial<T>, options: { operator?: SqlWhereOperator } = {}): string {
+  public whereEqual(where: Partial<T>, options: { operator?: SqlComparisonOperator } = {}): string {
     const { operator = 'AND' } = options;
 
     if (!(where instanceof Entity)) throw new Error('WHERE condition must be entity instance.');
