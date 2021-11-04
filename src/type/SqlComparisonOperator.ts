@@ -1,1 +1,1 @@
-export type SqlComparisonOperator = '=' | '>' | '>=' | '<' | '<=' | '<>';
+export type SqlComparisonOperator = '=' | '>' | '>=' | '<' | '<=' | '<>' | 'IN';

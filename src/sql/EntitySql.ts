@@ -99,7 +99,19 @@ export abstract class EntitySql<T extends new (...args: unknown[]) => Entity, K 
     const placeholder = this.placeholder(prop) + '_' + Object.keys(this.placedValueMap).length;
     this.placedValueMap[placeholder] = serializedValue;
 
-    return `${this.column(prop)}${op}:${placeholder}`;
+    if (op === 'IN') {
+      if (Array.isArray(value)) {
+        const terms: string[] = [];
+        for (const item of value as unknown[]) {
+          terms.push(this.comparison(prop, '=', item));
+        }
+        return `(${terms.join(' OR ')})`;
+      } else {
+        return `${this.column(prop)}=:${placeholder}`;
+      }
+    } else {
+      return `${this.column(prop)}${op}:${placeholder}`;
+    }
   }
 
   public eq(prop: K, value: unknown): string {
@@ -127,11 +139,7 @@ export abstract class EntitySql<T extends new (...args: unknown[]) => Entity, K 
   }
 
   public in(prop: K, values: unknown[]): string {
-    const terms: string[] = [];
-    for (const value of values) {
-      terms.push(this.comparison(prop, '=', value));
-    }
-    return `(${terms.join(' OR ')})`;
+    return this.comparison(prop, 'IN', values);
   }
 
   /**

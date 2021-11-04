@@ -115,9 +115,13 @@ describe('repo > entity-read-sql.test', () => {
 
   it('조건문 반환 : 목록의 값 중 하나라도 일치(in)', () => {
     const sql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
-    expect(sql.in('numberProp', [1, 2, 3])).to.be.eq(
-      '(T1.number_prop=:T1_numberProp_0 OR T1.number_prop=:T1_numberProp_1 OR T1.number_prop=:T1_numberProp_2)'
+
+    expect(sql.comparison('numberProp', 'IN', [1, 2, 3])).to.be.eq(
+      '(T1.number_prop=:T1_numberProp_1 OR T1.number_prop=:T1_numberProp_2 OR T1.number_prop=:T1_numberProp_3)'
     );
+
+    // 목록이 아닌 단일 값으로 요청했을 경우 단일 조건으로 반환
+    expect(sql.comparison('numberProp', 'IN', 1)).to.be.eq('T1.number_prop=:T1_numberProp_4');
   });
 
   it('단일 조건 WHERE SQL', () => {
