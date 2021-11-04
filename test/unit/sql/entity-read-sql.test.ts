@@ -113,6 +113,13 @@ describe('repo > entity-read-sql.test', () => {
     expect(sql.comparison('numberProp', '<>', 1)).to.be.eq('T1.number_prop<>:T1_numberProp_0');
   });
 
+  it('조건문 반환 : 목록의 값 중 하나라도 일치(in)', () => {
+    const sql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
+    expect(sql.in('numberProp', [1, 2, 3])).to.be.eq(
+      '(T1.number_prop=:T1_numberProp_0 OR T1.number_prop=:T1_numberProp_1 OR T1.number_prop=:T1_numberProp_2)'
+    );
+  });
+
   it('단일 조건 WHERE SQL', () => {
     const sql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
     expect(sql.where({ prop: 'numberProp', value: 1 })).to.be.eq('T1.number_prop=:T1_numberProp_0');

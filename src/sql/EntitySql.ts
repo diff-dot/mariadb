@@ -126,6 +126,14 @@ export abstract class EntitySql<T extends new (...args: unknown[]) => Entity, K 
     return this.comparison(prop, '<>', value);
   }
 
+  public in(prop: K, values: unknown[]): string {
+    const terms: string[] = [];
+    for (const value of values) {
+      terms.push(this.comparison(prop, '=', value));
+    }
+    return `(${terms.join(' OR ')})`;
+  }
+
   /**
    * 프로퍼티의 placeholder 이름 반환
    */
