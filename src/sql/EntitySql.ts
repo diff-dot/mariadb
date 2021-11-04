@@ -1,9 +1,19 @@
+import { Entity } from '@diff./repository';
+import { classToPlain } from 'class-transformer';
+import { isSqlComparisonExprGroup, SqlComparisonExpr } from '../type/SqlComparisonExpr';
+import { SqlComparisonOperator } from '../type/SqlComparisonOperator';
+
 /**
  * EntityWrite, Read Sql 클래스에서 사용할 공통 메소드 정의
  */
-export class EntitySql {
-  protected constructor() {
-    //
+export abstract class EntitySql<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>> {
+  // comparison 조건에 사용할 serialized 된 값을 placeholder 이름으로 팹핑하여 관리할 변수
+  protected readonly placedValueMap: Record<string, unknown>;
+  protected readonly entityConstructor: T;
+
+  protected constructor(entityConstructor: T) {
+    this.entityConstructor = entityConstructor;
+    this.placedValueMap = {};
   }
 
   /**
@@ -37,4 +47,97 @@ export class EntitySql {
     }
     return result;
   }
+
+  /**
+   * 저장 가능한 형태의 값 목록을 반환
+   * @returns
+   */
+  public placedValues(): Record<string, unknown> {
+    return this.placedValueMap;
+  }
+
+  /**
+   * DB 저장을 위해 serialize 한 값을 반환
+   *
+   * @param prop
+   * @param value
+   * @returns
+   */
+  public serializeValue(prop: K, value: unknown): unknown {
+    const entity = new this.entityConstructor();
+    Object.assign(entity, { [prop + '']: value });
+    const serializedEntity = classToPlain(entity, { exposeUnsetFields: false });
+    return serializedEntity[prop + ''];
+  }
+
+  /**
+   * where 쿼리 반환
+   */
+  public where(where: SqlComparisonExpr<K>): string {
+    const terms: string[] = [];
+    if (isSqlComparisonExprGroup(where)) {
+      for (const exp of where.exprs) {
+        if (isSqlComparisonExprGroup(exp)) {
+          terms.push(` (${this.where(exp)}) `);
+        } else {
+          terms.push(this.comparison(exp.prop, exp.op || '=', exp.value));
+        }
+      }
+    } else {
+      terms.push(this.comparison(where.prop, where.op || '=', where.value));
+    }
+
+    return terms.join(` ${where.op || 'AND'} `);
+  }
+
+  /**
+   * 비교 표현식 반환
+   */
+  public comparison(prop: K, op: SqlComparisonOperator, value: unknown): string {
+    const serializedValue = this.serializeValue(prop, value);
+
+    const placeholder = this.placeholder(prop) + '_' + Object.keys(this.placedValueMap).length;
+    this.placedValueMap[placeholder] = serializedValue;
+
+    return `${this.column(prop)}${op}:${placeholder}`;
+  }
+
+  public eq(prop: K, value: unknown): string {
+    return this.comparison(prop, '=', value);
+  }
+
+  public gt(prop: K, value: unknown): string {
+    return this.comparison(prop, '>', value);
+  }
+
+  public gte(prop: K, value: unknown): string {
+    return this.comparison(prop, '>=', value);
+  }
+
+  public lt(prop: K, value: unknown): string {
+    return this.comparison(prop, '<', value);
+  }
+
+  public lte(prop: K, value: unknown): string {
+    return this.comparison(prop, '<=', value);
+  }
+
+  public not(prop: K, value: unknown): string {
+    return this.comparison(prop, '<>', value);
+  }
+
+  /**
+   * 프로퍼티의 placeholder 이름 반환
+   */
+  protected abstract placeholder(prop: K): string;
+
+  /**
+   * dbName.tableName 반환
+   */
+  public abstract get tablePath(): string;
+
+  /**
+   * 프로퍼티의 컬럼명 반환
+   */
+  public abstract column(prop: K): string;
 }

@@ -7,6 +7,7 @@ import { MariadbClient } from '../../src/MariadbClient';
 import { hostOptions } from './env/host';
 import { PoolConnection } from 'mariadb';
 import { EntityReadSql } from '../../src/sql';
+import { SqlComparisonExpr } from '../../src';
 
 @MariadbEntity({ db: 'test', table: 'mariadb_module_single_pk_test' })
 class SinglePkEntity extends Entity {
@@ -92,7 +93,7 @@ class SinglePkRepo extends MariadbRepository {
     return res.affectedRows === 1;
   }
 
-  async updateTestEntities<T extends SinglePkEntity>(args: { set: Partial<T>; where: Partial<T> }): Promise<number> {
+  async updateTestEntities<T extends SinglePkEntity>(args: { set: Partial<T>; where: SqlComparisonExpr<keyof SinglePkEntity> }): Promise<number> {
     const { set, where } = args;
     const res = await this.updateEntities(set, where);
     return res.affectedRows;
@@ -103,8 +104,8 @@ class SinglePkRepo extends MariadbRepository {
     return res.affectedRows === 1;
   }
 
-  async deleteTestEntities<T extends SinglePkEntity>(where: Partial<T>): Promise<number> {
-    const res = await this.deleteEntities(where);
+  async deleteTestEntities(where: SqlComparisonExpr<keyof SinglePkEntity>): Promise<number> {
+    const res = await this.deleteEntities(SinglePkEntity, where);
     return res.affectedRows;
   }
 }
@@ -191,7 +192,7 @@ describe('repo > mariadb-repository.test', () => {
     singlePkEntity.data = 'updated data2';
     const res = await singlePkRepo.updateTestEntities({
       set: SinglePkEntity.partial({ data: 'updated2' }),
-      where: SinglePkEntity.partial({ testEntityId: 'w' })
+      where: { prop: 'testEntityId', value: 'w' }
     });
     expect(res).to.be.eq(1);
   });
@@ -236,7 +237,7 @@ describe('repo > mariadb-repository.test', () => {
     });
     await singlePkRepo.addTestEntity(testEntity);
 
-    const deleteRes = await singlePkRepo.deleteTestEntities(SinglePkEntity.partial({ idx: testEntity.idx }));
+    const deleteRes = await singlePkRepo.deleteTestEntities({ prop: 'idx', value: testEntity.idx });
     expect(deleteRes).to.be.eq(1);
   });
 

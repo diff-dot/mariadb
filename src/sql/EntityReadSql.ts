@@ -1,28 +1,19 @@
 import { Entity } from '@diff./repository';
-import { classToPlain } from 'class-transformer';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
 import { RowLevelLockMode } from '../type/RowLevelLockMode';
-import { SqlComparisonExpr } from '../type/SqlComparisonExpr';
-import { isSqlComparisonExprGroup, SqlComparisonExprGroup } from '../type/SqlComparisonExprGroup';
-import { SqlComparisonOperator } from '../type/SqlComparisonOperator';
 import { EntitySql } from './EntitySql';
 
-export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>> extends EntitySql {
-  private readonly entityClass: T;
+export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>> extends EntitySql<T, K> {
   public readonly entityOption: MariadbEntityDescriptor;
   private readonly tableAlias?: string;
-  private readonly placedValueMap: Record<string, unknown>;
 
-  constructor(entityClass: T, options: { tableAlias?: string } = {}) {
+  constructor(entityConstructor: T, options: { tableAlias?: string } = {}) {
     const { tableAlias } = options;
+    super(entityConstructor);
 
-    super();
-
-    this.entityClass = entityClass;
-    this.entityOption = getMariadbEntityOptions(entityClass);
+    this.entityOption = getMariadbEntityOptions(entityConstructor);
     this.tableAlias = tableAlias;
-    this.placedValueMap = {};
   }
 
   /**
@@ -63,73 +54,6 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     return `${args.offset || 0},${args.size}`;
   }
 
-  public where(where: SqlComparisonExprGroup<K> | SqlComparisonExpr<K>): string {
-    const terms: string[] = [];
-    if (isSqlComparisonExprGroup(where)) {
-      for (const exp of where.exprs) {
-        if (isSqlComparisonExprGroup(exp)) {
-          terms.push(` (${this.where(exp)}) `);
-        } else {
-          terms.push(this.comparison(exp.prop, exp.op || '=', exp.value));
-        }
-      }
-    } else {
-      terms.push(this.comparison(where.prop, where.op || '=', where.value));
-    }
-
-    return terms.join(` ${where.op || 'AND'} `);
-  }
-
-  /**
-   * DB 저장을 위해 serialize 한 값을 반환
-   *
-   * @param prop
-   * @param value
-   * @returns
-   */
-  public serializeValue(prop: K, value: unknown): unknown {
-    const entity = new this.entityClass();
-    Object.assign(entity, { [prop]: value });
-    const serializedEntity = classToPlain(entity, { exposeUnsetFields: false });
-    return serializedEntity[prop.toString()];
-  }
-
-  /**
-   * 비교 표현식 반환
-   */
-  public comparison(prop: K, op: SqlComparisonOperator, value: unknown): string {
-    const serializedValue = this.serializeValue(prop, value);
-
-    const placeholder = this.placeholder(prop.toString()) + '_' + Object.keys(this.placedValueMap).length;
-    this.placedValueMap[placeholder] = serializedValue;
-
-    return `${this.column(prop)}${op}:${placeholder}`;
-  }
-
-  public eq(prop: K, value: unknown): string {
-    return this.comparison(prop, '=', value);
-  }
-
-  public gt(prop: K, value: unknown): string {
-    return this.comparison(prop, '>', value);
-  }
-
-  public gte(prop: K, value: unknown): string {
-    return this.comparison(prop, '>=', value);
-  }
-
-  public lt(prop: K, value: unknown): string {
-    return this.comparison(prop, '<', value);
-  }
-
-  public lte(prop: K, value: unknown): string {
-    return this.comparison(prop, '<=', value);
-  }
-
-  public not(prop: K, value: unknown): string {
-    return this.comparison(prop, '<>', value);
-  }
-
   public rowLevelLock(mode: RowLevelLockMode) {
     if (mode === 'shared') return 'LOCK IN SHARE MODE';
     else if (mode === 'exclusive') return 'FOR UPDATE';
@@ -138,12 +62,8 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     }
   }
 
-  public placedValues(): Record<string, unknown> {
-    return this.placedValueMap;
-  }
-
-  private placeholder(prop: string) {
-    return this.tableAlias ? this.tableAlias + '_' + prop : prop;
+  protected placeholder(prop: K): string {
+    return this.tableAlias ? this.tableAlias + '_' + prop.toString() : prop.toString();
   }
 
   public get tablePath(): string {

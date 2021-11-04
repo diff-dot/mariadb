@@ -6,7 +6,7 @@ import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { OrderByProp } from './type/OrderByProp';
 import { RowLevelLockMode } from './type/RowLevelLockMode';
-import { SqlComparisonExprGroup } from './type/SqlComparisonExprGroup';
+import { SqlComparisonExpr } from './type/SqlComparisonExpr';
 import { WriteResult } from './type/WriteResult';
 
 /**
@@ -27,7 +27,7 @@ export abstract class MariadbRepository extends Repository {
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
     options: {
-      where?: SqlComparisonExprGroup<keyof T>;
+      where?: SqlComparisonExpr<keyof T>;
       connection?: PoolConnection;
       lock?: RowLevelLockMode;
     }
@@ -58,7 +58,7 @@ export abstract class MariadbRepository extends Repository {
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
     options: {
-      where?: SqlComparisonExprGroup<keyof T>;
+      where?: SqlComparisonExpr<keyof T>;
       order?: OrderByProp<T>;
       offset?: number;
       size?: number;
@@ -96,7 +96,7 @@ export abstract class MariadbRepository extends Repository {
   protected async count<T extends Entity>(
     entityConstructor: { new (...args: unknown[]): T },
     args: {
-      where?: SqlComparisonExprGroup<keyof T>;
+      where?: SqlComparisonExpr<keyof T>;
       connection?: PoolConnection;
       lock?: RowLevelLockMode;
     }
@@ -183,7 +183,7 @@ export abstract class MariadbRepository extends Repository {
 
     try {
       const res = await connection.query(
-        `UPDATE ${entitySql.tablePath} SET ${entitySql.updateColumns()} WHERE ${entitySql.whereById()}`,
+        `UPDATE ${entitySql.tablePath} SET ${entitySql.updateColumns()} WHERE ${entitySql.whereId()}`,
         entitySql.placedValues()
       );
       return res;
@@ -192,7 +192,11 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async updateEntities(set: Entity, where: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
+  protected async updateEntities<T extends Entity>(
+    set: T,
+    where: SqlComparisonExpr<keyof T>,
+    options: { connection?: PoolConnection } = {}
+  ): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(set);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -202,7 +206,7 @@ export abstract class MariadbRepository extends Repository {
       const res = await connection.query(
         `UPDATE ${entitySql.tablePath}
         SET ${entitySql.updateColumns()}
-        WHERE ${entitySql.whereEqual(where)}`,
+        WHERE ${entitySql.where(where)}`,
         entitySql.placedValues()
       );
       return res;
@@ -218,15 +222,19 @@ export abstract class MariadbRepository extends Repository {
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
-      const res = await connection.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereById()}`, entitySql.placedValues());
+      const res = await connection.query(`DELETE FROM ${entitySql.tablePath} WHERE ${entitySql.whereId()}`, entitySql.placedValues());
       return res;
     } finally {
       if (localConnection) await localConnection.release();
     }
   }
 
-  protected async deleteEntities(where: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
-    const entitySql = new EntityWriteSql(where);
+  protected async deleteEntities<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>>(
+    entityConstructor: T,
+    where: SqlComparisonExpr<K>,
+    options: { connection?: PoolConnection } = {}
+  ): Promise<WriteResult> {
+    const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
@@ -234,7 +242,7 @@ export abstract class MariadbRepository extends Repository {
     try {
       const res = await connection.query(
         `DELETE FROM ${entitySql.tablePath}
-        WHERE ${entitySql.whereEqual(where)}`,
+        WHERE ${entitySql.where(where)}`,
         entitySql.placedValues()
       );
       return res;
