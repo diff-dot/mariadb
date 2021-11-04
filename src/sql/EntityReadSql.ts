@@ -3,6 +3,7 @@ import { classToPlain } from 'class-transformer';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
 import { RowLevelLockMode } from '../type/RowLevelLockMode';
+import { SqlComparisonExpr } from '../type/SqlComparisonExpr';
 import { isSqlComparisonExprGroup, SqlComparisonExprGroup } from '../type/SqlComparisonExprGroup';
 import { SqlComparisonOperator } from '../type/SqlComparisonOperator';
 import { EntitySql } from './EntitySql';
@@ -62,14 +63,18 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
     return `${args.offset || 0},${args.size}`;
   }
 
-  public where(where: SqlComparisonExprGroup<K>): string {
+  public where(where: SqlComparisonExprGroup<K> | SqlComparisonExpr<K>): string {
     const terms: string[] = [];
-    for (const exp of where.exprs) {
-      if (isSqlComparisonExprGroup(exp)) {
-        terms.push(` (${this.where(exp)}) `);
-      } else {
-        terms.push(this.comparison(exp.prop, exp.op || '=', exp.value));
+    if (isSqlComparisonExprGroup(where)) {
+      for (const exp of where.exprs) {
+        if (isSqlComparisonExprGroup(exp)) {
+          terms.push(` (${this.where(exp)}) `);
+        } else {
+          terms.push(this.comparison(exp.prop, exp.op || '=', exp.value));
+        }
       }
+    } else {
+      terms.push(this.comparison(where.prop, where.op || '=', where.value));
     }
 
     return terms.join(` ${where.op || 'AND'} `);

@@ -113,7 +113,12 @@ describe('repo > entity-read-sql.test', () => {
     expect(sql.comparison('numberProp', '<>', 1)).to.be.eq('T1.number_prop<>:T1_numberProp_0');
   });
 
-  it('복합 조건문', () => {
+  it('단일 조건 WHERE SQL', () => {
+    const sql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
+    expect(sql.where({ prop: 'numberProp', value: 1 })).to.be.eq('T1.number_prop=:T1_numberProp_0');
+  });
+
+  it('복합 조건 WHERE SQL', () => {
     const sql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
     expect(
       sql.where({
@@ -125,7 +130,7 @@ describe('repo > entity-read-sql.test', () => {
     ).to.be.eq('T1.number_prop=:T1_numberProp_0 AND T1.string_prop=:T1_stringProp_1');
   });
 
-  it('조건 그룹이 포함된 복합 조건', () => {
+  it('조건 그룹이 포함된 복합 조건 WHERE SQL', () => {
     const sql = new EntityReadSql(TestEntity, { tableAlias: 'T1' });
     expect(
       sql.where({
