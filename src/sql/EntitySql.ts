@@ -95,6 +95,9 @@ export abstract class EntitySql<T extends new (...args: unknown[]) => Entity, K 
    */
   public comparison(prop: K, op: SqlComparisonOperator, value: unknown): string {
     const serializedValue = this.serializeValue(prop, value);
+    if (serializedValue === undefined) {
+      throw new Error(`${prop} data is undefined`);
+    }
 
     const placeholder = this.placeholder(prop) + '_' + Object.keys(this.placedValueMap).length;
     this.placedValueMap[placeholder] = serializedValue;
