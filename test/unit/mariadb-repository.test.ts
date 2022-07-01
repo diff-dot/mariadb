@@ -51,21 +51,23 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async testEntity<K extends keyof SinglePkEntity>(testEntityId: string, props: K[]): Promise<Pick<SinglePkEntity, K> | undefined> {
-    return this.entity(SinglePkEntity, props, {
-      where: { exprs: [{ prop: 'testEntityId', value: testEntityId }] }
-    });
+    return this.entity(SinglePkEntity, props, { exprs: [{ prop: 'testEntityId', value: testEntityId }] });
   }
 
   async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
-    return this.entities(SinglePkEntity, props, {
-      where: { exprs: [{ prop: 'idx', value: index }] },
-      order: { idx: 'DESC' },
-      size: 10
-    });
+    return this.entities(
+      SinglePkEntity,
+      props,
+      { exprs: [{ prop: 'idx', value: index }] },
+      {
+        order: { idx: 'DESC' },
+        size: 10
+      }
+    );
   }
 
   async testEntityCount(data: string): Promise<number> {
-    const res = this.count(SinglePkEntity, { where: { exprs: [{ prop: 'data', value: data }] } });
+    const res = this.count(SinglePkEntity, { exprs: [{ prop: 'data', value: data }] });
     return res;
   }
 
@@ -121,9 +123,7 @@ class AutoIncPkRepo extends MariadbRepository {
   }
 
   async testEntity<K extends keyof AutoIncPkEntity>(id: number, props: K[]): Promise<Pick<AutoIncPkEntity, K> | undefined> {
-    return this.entity(AutoIncPkEntity, props, {
-      where: { exprs: [{ prop: 'id', value: id }] }
-    });
+    return this.entity(AutoIncPkEntity, props, { exprs: [{ prop: 'id', value: id }] });
   }
 
   async updateTestEntity(entity: AutoIncPkEntity): Promise<boolean> {

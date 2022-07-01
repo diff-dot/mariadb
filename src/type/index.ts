@@ -6,3 +6,5 @@ export * from './SqlComparisonExpr';
 export * from './SqlComparisonOperator';
 export * from './SqlLogicalOperators';
 export * from './WriteResult';
+export * from './WriteMethodOptions';
+export * from './ReadMethodOptions';

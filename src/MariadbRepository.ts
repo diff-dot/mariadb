@@ -4,9 +4,10 @@ import { PoolConnection } from 'mariadb';
 import { MariadbHostOptions } from './config/MariadbHostOptions';
 import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
+import { ReadMethodOptions } from './type';
 import { OrderByProp } from './type/OrderByProp';
-import { RowLevelLockMode } from './type/RowLevelLockMode';
 import { SqlComparisonExpr } from './type/SqlComparisonExpr';
+import { WriteMethodOptions } from './type/WriteMethodOptions';
 import { WriteResult } from './type/WriteResult';
 
 /**
@@ -26,13 +27,10 @@ export abstract class MariadbRepository extends Repository {
   protected async entity<T extends Entity, K extends keyof T>(
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
-    options: {
-      where?: SqlComparisonExpr<keyof T>;
-      connection?: PoolConnection;
-      lock?: RowLevelLockMode;
-    }
+    where: SqlComparisonExpr<keyof T> | null,
+    options: ReadMethodOptions = {}
   ): Promise<Pick<T, K> | undefined> {
-    const { where, lock } = options;
+    const { lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -57,16 +55,14 @@ export abstract class MariadbRepository extends Repository {
   protected async entities<T extends Entity, K extends keyof T>(
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
+    where: SqlComparisonExpr<keyof T> | null,
     options: {
-      where?: SqlComparisonExpr<keyof T>;
       order?: OrderByProp<T>;
       offset?: number;
       size?: number;
-      connection?: PoolConnection;
-      lock?: RowLevelLockMode;
-    }
+    } & ReadMethodOptions = {}
   ): Promise<Pick<T, K>[]> {
-    const { where, order, offset = 0, size, lock } = options;
+    const { order, offset = 0, size, lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -95,17 +91,14 @@ export abstract class MariadbRepository extends Repository {
 
   protected async count<T extends Entity>(
     entityConstructor: { new (...args: unknown[]): T },
-    args: {
-      where?: SqlComparisonExpr<keyof T>;
-      connection?: PoolConnection;
-      lock?: RowLevelLockMode;
-    }
+    where: SqlComparisonExpr<keyof T> | null,
+    options: ReadMethodOptions = {}
   ): Promise<number> {
-    const { where, lock } = args;
+    const { lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
-    const connection = args.connection ? args.connection : (localConnection = await this.client.connection());
+    const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
       const res = await connection.query(
@@ -120,7 +113,7 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async addEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
+  protected async addEntity(entity: Entity, options: WriteMethodOptions = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -145,7 +138,7 @@ export abstract class MariadbRepository extends Repository {
    * @param options
    * @returns
    */
-  protected async upsertEntity(entity: Entity, options: { updateEntity?: Entity; connection?: PoolConnection }): Promise<WriteResult> {
+  protected async upsertEntity(entity: Entity, options: { updateEntity?: Entity } & WriteMethodOptions): Promise<WriteResult> {
     const { updateEntity } = options;
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -175,7 +168,7 @@ export abstract class MariadbRepository extends Repository {
     }
   }
 
-  protected async updateEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
+  protected async updateEntity(entity: Entity, options: WriteMethodOptions = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -195,7 +188,7 @@ export abstract class MariadbRepository extends Repository {
   protected async updateEntities<T extends Entity>(
     set: T,
     where: SqlComparisonExpr<keyof T>,
-    options: { connection?: PoolConnection } = {}
+    options: WriteMethodOptions = {}
   ): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(set);
 
@@ -232,7 +225,7 @@ export abstract class MariadbRepository extends Repository {
   protected async deleteEntities<T extends new (...args: unknown[]) => Entity, K extends keyof InstanceType<T>>(
     entityConstructor: T,
     where: SqlComparisonExpr<K>,
-    options: { connection?: PoolConnection } = {}
+    options: WriteMethodOptions = {}
   ): Promise<WriteResult> {
     const entitySql = new EntityReadSql(entityConstructor);
 
