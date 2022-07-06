@@ -1,6 +1,6 @@
 import { Entity, Repository } from '@diff./repository';
 import { plainToClass } from 'class-transformer';
-import { PoolConnection } from 'mariadb';
+import { PoolConnection, QueryOptions } from 'mariadb';
 import { MariadbHostOptions } from './config/MariadbHostOptions';
 import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
@@ -265,5 +265,18 @@ export abstract class MariadbRepository extends Repository {
     }
 
     return result as Record<K, Record<string, unknown>>;
+  }
+
+  protected async query(sql: string | QueryOptions, values?: Record<string, unknown>, connection?: PoolConnection): Promise<unknown> {
+    let localConnection: PoolConnection | undefined = undefined;
+    const sourceConnection = connection || (localConnection = await this.client.connection());
+
+    try {
+      return await sourceConnection.query(sql, values);
+    } catch (e) {
+      throw e;
+    } finally {
+      if (localConnection) await localConnection.release();
+    }
   }
 }
