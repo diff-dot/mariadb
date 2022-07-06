@@ -267,7 +267,8 @@ export abstract class MariadbRepository extends Repository {
     return result as Record<K, Record<string, unknown>>;
   }
 
-  protected async query(sql: string | QueryOptions, values?: Record<string, unknown>, connection?: PoolConnection): Promise<unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected async query(sql: string | QueryOptions, values?: Record<string, unknown>, connection?: PoolConnection): Promise<any> {
     let localConnection: PoolConnection | undefined = undefined;
     const sourceConnection = connection || (localConnection = await this.client.connection());
 
