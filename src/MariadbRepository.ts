@@ -56,13 +56,11 @@ export abstract class MariadbRepository extends Repository {
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
     where: SqlComparisonExpr<keyof T> | null,
-    options: {
-      order?: OrderByProp<T>;
-      offset?: number;
-      size?: number;
-    } & ReadMethodOptions = {}
+    order: OrderByProp<T> | null,
+    offset: number,
+    size: number,
+    options: ReadMethodOptions = {}
   ): Promise<Pick<T, K>[]> {
-    const { order, offset = 0, size, lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
     let localConnection: PoolConnection | undefined = undefined;
@@ -74,7 +72,7 @@ export abstract class MariadbRepository extends Repository {
         ${where ? 'WHERE ' + entitySql.where(where) : ''}
         ${order ? 'ORDER BY ' + entitySql.order(order) : ''}
         ${size ? 'LIMIT ' + entitySql.limit({ offset, size }) : ''}
-        ${lock ? entitySql.rowLevelLock(lock) : ''}`,
+        ${options.lock ? entitySql.rowLevelLock(options.lock) : ''}`,
         entitySql.placedValues()
       );
 
