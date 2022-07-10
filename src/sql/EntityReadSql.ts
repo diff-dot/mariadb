@@ -53,10 +53,10 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
 
   public limit(limit: Limit) {
     if (typeof limit === 'number') {
-      return `LIMIT ${limit}`;
+      return limit.toString();
     } else {
       const cons: string[] = [];
-      if (limit.size) cons.push(`LIMIT ${limit.size}`);
+      if (limit.size) cons.push(limit.size.toString());
       if (limit.offset) cons.push(`OFFSET ${limit.offset}`);
       return cons.join(' ');
     }

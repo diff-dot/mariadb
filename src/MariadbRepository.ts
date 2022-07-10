@@ -70,7 +70,7 @@ export abstract class MariadbRepository extends Repository {
       const cons: string[] = [];
       if (where) cons.push('WHERE ' + entitySql.where(where));
       if (order) cons.push('ORDER BY ' + entitySql.order(order));
-      if (limit) cons.push(entitySql.limit(limit));
+      if (limit) cons.push('LIMIT ' + entitySql.limit(limit));
       if (options.lock) cons.push(entitySql.rowLevelLock(options.lock));
 
       const res = await connection.query(
