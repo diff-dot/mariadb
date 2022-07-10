@@ -1,4 +1,5 @@
 import { Entity } from '@diff./repository';
+import { isSymbol } from 'util';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { OrderByMode } from '../type/OrderByMode';
 import { RowLevelLockMode } from '../type/RowLevelLockMode';
@@ -50,8 +51,15 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
       .join(',');
   }
 
-  public limit(args: { offset?: number; size: number }) {
-    return `${args.offset || 0},${args.size}`;
+  public limit(range: { offset?: number; limit: number } | number) {
+    if (typeof range === 'number') {
+      return `LIMIT ${range}`;
+    } else {
+      const cons: string[] = [];
+      if (range.limit) cons.push(`LIMIT ${range.limit}`);
+      if (range.offset) cons.push(`OFFSET ${range.offset}`);
+      return cons.join(' ');
+    }
   }
 
   public rowLevelLock(mode: RowLevelLockMode) {

@@ -55,7 +55,7 @@ class SinglePkRepo extends MariadbRepository {
   }
 
   async testEntities<K extends keyof SinglePkEntity>(index: number, props: K[]): Promise<Pick<SinglePkEntity, K>[]> {
-    return this.entities(SinglePkEntity, props, { exprs: [{ prop: 'idx', value: index }] }, { idx: 'DESC' }, 0, 10);
+    return this.entities(SinglePkEntity, props, { exprs: [{ prop: 'idx', value: index }] }, { idx: 'DESC' }, { offset: 0, limit: 10 });
   }
 
   async testEntityCount(data: string): Promise<number> {
