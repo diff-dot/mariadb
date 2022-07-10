@@ -33,7 +33,7 @@ export abstract class MariadbRepository extends Repository {
     const { lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -55,14 +55,14 @@ export abstract class MariadbRepository extends Repository {
   protected async entities<T extends Entity, K extends keyof T>(
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
-    where: SqlComparisonExpr<keyof T> | undefined,
-    order: OrderByProp<T> | undefined,
-    limit: { offset?: number; limit: number } | number | undefined,
+    where: SqlComparisonExpr<keyof T> | undefined | null,
+    order: OrderByProp<T> | undefined | null,
+    limit: { offset?: number; limit: number } | number | undefined | null,
     options: ReadMethodOptions = {}
   ): Promise<Pick<T, K>[]> {
     const entitySql = new EntityReadSql(entityConstructor);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -97,7 +97,7 @@ export abstract class MariadbRepository extends Repository {
     const { lock } = options;
     const entitySql = new EntityReadSql(entityConstructor);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -116,7 +116,7 @@ export abstract class MariadbRepository extends Repository {
   protected async addEntity(entity: Entity, options: WriteMethodOptions = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -141,7 +141,7 @@ export abstract class MariadbRepository extends Repository {
   protected async upsertEntity(entity: Entity, options: { updateEntity?: Entity } & WriteMethodOptions): Promise<WriteResult> {
     const { updateEntity } = options;
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -171,7 +171,7 @@ export abstract class MariadbRepository extends Repository {
   protected async updateEntity(entity: Entity, options: WriteMethodOptions = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -192,7 +192,7 @@ export abstract class MariadbRepository extends Repository {
   ): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(set);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -211,7 +211,7 @@ export abstract class MariadbRepository extends Repository {
   protected async deleteEntity(entity: Entity, options: { connection?: PoolConnection } = {}): Promise<WriteResult> {
     const entitySql = new EntityWriteSql(entity);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -229,7 +229,7 @@ export abstract class MariadbRepository extends Repository {
   ): Promise<WriteResult> {
     const entitySql = new EntityReadSql(entityConstructor);
 
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const connection = options.connection ? options.connection : (localConnection = await this.client.connection());
 
     try {
@@ -269,7 +269,7 @@ export abstract class MariadbRepository extends Repository {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected async query(sql: string | QueryOptions, values?: Record<string, unknown>, connection?: PoolConnection): Promise<any> {
-    let localConnection: PoolConnection | undefined = undefined;
+    let localConnection: PoolConnection | undefined;
     const sourceConnection = connection || (localConnection = await this.client.connection());
 
     try {
