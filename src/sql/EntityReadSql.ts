@@ -1,5 +1,4 @@
 import { Entity } from '@diff./repository';
-import { isSymbol } from 'util';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
 import { EntityRange } from '../type';
 import { OrderByMode } from '../type/OrderByMode';
@@ -52,7 +51,7 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
       .join(',');
   }
 
-  public range(range: NonNullable<EntityRange>) {
+  public range(range: EntityRange) {
     if (typeof range === 'number') {
       return `LIMIT ${range}`;
     } else {

@@ -28,7 +28,7 @@ export abstract class MariadbRepository extends Repository {
   protected async entity<T extends Entity, K extends keyof T>(
     entityConstructor: { new (...args: unknown[]): T },
     props: K[],
-    where: SqlComparisonExpr<keyof T> | undefined,
+    where: SqlComparisonExpr<keyof T> | undefined | null,
     options: ReadMethodOptions = {}
   ): Promise<Pick<T, K> | undefined> {
     const { lock } = options;
@@ -58,7 +58,7 @@ export abstract class MariadbRepository extends Repository {
     props: K[],
     where: SqlComparisonExpr<keyof T> | undefined | null,
     order: OrderByProp<T> | undefined | null,
-    range: EntityRange,
+    range?: EntityRange | null,
     options: ReadMethodOptions = {}
   ): Promise<Pick<T, K>[]> {
     const entitySql = new EntityReadSql(entityConstructor);
@@ -92,7 +92,7 @@ export abstract class MariadbRepository extends Repository {
 
   protected async count<T extends Entity>(
     entityConstructor: { new (...args: unknown[]): T },
-    where: SqlComparisonExpr<keyof T> | undefined,
+    where: SqlComparisonExpr<keyof T> | undefined | null,
     options: ReadMethodOptions = {}
   ): Promise<number> {
     const { lock } = options;
