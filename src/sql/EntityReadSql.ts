@@ -1,6 +1,6 @@
 import { Entity } from '@diff./repository';
 import { getMariadbEntityOptions, MariadbEntityDescriptor } from '../decorator/MariadbEntity';
-import { EntityRange } from '../type';
+import { Limit } from '../type';
 import { OrderByMode } from '../type/OrderByMode';
 import { RowLevelLockMode } from '../type/RowLevelLockMode';
 import { EntitySql } from './EntitySql';
@@ -51,13 +51,13 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
       .join(',');
   }
 
-  public range(range: EntityRange) {
-    if (typeof range === 'number') {
-      return `LIMIT ${range}`;
+  public limit(limit: Limit) {
+    if (typeof limit === 'number') {
+      return `LIMIT ${limit}`;
     } else {
       const cons: string[] = [];
-      if (range.size) cons.push(`LIMIT ${range.size}`);
-      if (range.offset) cons.push(`OFFSET ${range.offset}`);
+      if (limit.size) cons.push(`LIMIT ${limit.size}`);
+      if (limit.offset) cons.push(`OFFSET ${limit.offset}`);
       return cons.join(' ');
     }
   }
