@@ -5,6 +5,7 @@ import { MariadbHostOptions } from './config/MariadbHostOptions';
 import { MariadbClient } from './MariadbClient';
 import { EntityReadSql, EntityWriteSql } from './sql';
 import { ReadMethodOptions } from './type';
+import { EntityRange } from './type/EntityRange';
 import { OrderByProp } from './type/OrderByProp';
 import { SqlComparisonExpr } from './type/SqlComparisonExpr';
 import { WriteMethodOptions } from './type/WriteMethodOptions';
@@ -57,7 +58,7 @@ export abstract class MariadbRepository extends Repository {
     props: K[],
     where: SqlComparisonExpr<keyof T> | undefined | null,
     order: OrderByProp<T> | undefined | null,
-    limit: { offset?: number; limit: number } | number | undefined | null,
+    range: EntityRange,
     options: ReadMethodOptions = {}
   ): Promise<Pick<T, K>[]> {
     const entitySql = new EntityReadSql(entityConstructor);
@@ -69,7 +70,7 @@ export abstract class MariadbRepository extends Repository {
       const cons: string[] = [];
       if (where) cons.push('WHERE ' + entitySql.where(where));
       if (order) cons.push('ORDER BY ' + entitySql.order(order));
-      if (limit) cons.push(entitySql.limit(limit));
+      if (range) cons.push(entitySql.range(range));
       if (options.lock) cons.push(entitySql.rowLevelLock(options.lock));
 
       const res = await connection.query(

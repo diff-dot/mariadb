@@ -51,12 +51,12 @@ export class EntityReadSql<T extends new (...args: unknown[]) => Entity, K exten
       .join(',');
   }
 
-  public limit(range: { offset?: number; limit: number } | number) {
+  public range(range: { offset?: number; size: number } | number) {
     if (typeof range === 'number') {
       return `LIMIT ${range}`;
     } else {
       const cons: string[] = [];
-      if (range.limit) cons.push(`LIMIT ${range.limit}`);
+      if (range.size) cons.push(`LIMIT ${range.size}`);
       if (range.offset) cons.push(`OFFSET ${range.offset}`);
       return cons.join(' ');
     }
